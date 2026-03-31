@@ -1,4 +1,4 @@
-// DOOMD - ice.gritboxops.com - A Chill Dystopian Shooter
+// I.C.E. - ice.gritboxops.com - A Chill Dystopian Shooter
 // ─── SUPABASE CONFIG ─────────────────────────────
 // Set these to your Supabase project URL and anon key
 const SUPABASE_URL = 'https://jnyzlqlxcdsnsfhaecxi.supabase.co';
@@ -431,7 +431,7 @@ async function loadGame(slot){
 async function showLeaderboardScreen(){
   let lb=await getLeaderboard();
   let el=document.getElementById('leaderboardScreen');
-  let html='<h2 style="color:#0f0;margin-bottom:10px;">TOP 50 - DOOMD</h2>';
+  let html='<h2 style="color:#0f0;margin-bottom:10px;">TOP 50 - I.C.E.</h2>';
   html+='<div style="color:#484;font-size:11px;margin-bottom:8px;">ice.gritboxops.com</div>';
   html+='<table style="color:#0f0;font-size:12px;border-collapse:collapse;width:100%;max-width:500px;">';
   html+='<tr style="color:#4a4;"><th>#</th><th>NAME</th><th>SCORE</th><th>WAVE</th><th>KILLS</th><th>DATE</th></tr>';
