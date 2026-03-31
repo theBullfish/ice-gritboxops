@@ -9,34 +9,41 @@ const W=640,H=480,MAP_S=24,FOV=Math.PI/3,HALF_FOV=FOV/2;
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 canvas.width=Math.min(W,window.innerWidth);canvas.height=Math.min(H,window.innerHeight);
+// MSP Airport map: 1=glass wall, 2=concrete pillar, 3=terminal wall, 4=check-in counter, 5=gate desk
 const MAP=[
 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
 3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
 3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,1,1,1,0,0,0,2,2,0,0,0,0,0,1,1,1,0,0,0,0,3,
-3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,3,
-3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,3,
+3,0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,3,
+3,0,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,3,
 3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,2,2,0,0,0,0,2,2,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,3,
+1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,2,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,
+1,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,
 3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
+3,0,0,0,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,3,
 3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,3,
+3,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,3,
 3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,2,2,0,0,0,0,2,2,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,3,
-3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,3,
-3,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,3,
-3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
-3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
+1,1,0,0,0,0,2,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3];
 function mapAt(x,y){return(x>=0&&x<MAP_S&&y>=0&&y<MAP_S)?MAP[y*MAP_S+x]:3;}
-// Wall colors
-const WC={1:{l:'#8B7355',d:'#6B5335'},2:{l:'#888',d:'#666'},3:{l:'#555',d:'#3a3a3a'}};
+// Wall colors - airport style
+const WC={
+  1:{l:'#6ca6cd',d:'#4a7a99'}, // glass walls - blue tint
+  2:{l:'#b0b0b0',d:'#888888'}, // concrete pillars - grey
+  3:{l:'#d0c8b8',d:'#a89880'}, // terminal walls - beige/tan
+  4:{l:'#3a3a4a',d:'#2a2a3a'}, // check-in counters - dark
+  5:{l:'#4a4a5a',d:'#3a3a4a'}  // gate desks - dark grey
+};
 // Player state
 let px=2.5,py=2.5,pa=0,hp=100,ammo=42,score=0,wave=1,running=false,paused=false;
 let keys={};let musicOn=true;
@@ -98,18 +105,22 @@ function castRays(){
   }
   return strips;
 }
-// Draw sky and floor
+// Draw airport ceiling and floor
 function drawBackground(){
+  // ceiling - fluorescent white/grey
   let grd=ctx.createLinearGradient(0,0,0,H/2);
-  grd.addColorStop(0,'#0a1628');grd.addColorStop(0.6,'#1a3050');grd.addColorStop(1,'#2a4a70');
+  grd.addColorStop(0,'#e8e4e0');grd.addColorStop(0.5,'#d0ccc4');grd.addColorStop(1,'#b8b0a8');
   ctx.fillStyle=grd;ctx.fillRect(0,0,W,H/2);
-  // sun
-  ctx.fillStyle='#ff8844';ctx.beginPath();ctx.arc(W*0.75,60,25,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#ffaa66';ctx.beginPath();ctx.arc(W*0.75,60,30,0,Math.PI*2);ctx.globalAlpha=0.3;ctx.fill();ctx.globalAlpha=1;
-  // floor
+  // fluorescent light strips
+  ctx.fillStyle='rgba(255,255,240,0.6)';
+  for(let i=0;i<4;i++){ctx.fillRect(W*0.1+i*W*0.22,0,W*0.12,H*0.08);}
+  // floor - polished terrazzo
   let grd2=ctx.createLinearGradient(0,H/2,0,H);
-  grd2.addColorStop(0,'#2a4a1a');grd2.addColorStop(1,'#1a2a0a');
+  grd2.addColorStop(0,'#c8bfb0');grd2.addColorStop(0.3,'#b0a898');grd2.addColorStop(1,'#989080');
   ctx.fillStyle=grd2;ctx.fillRect(0,H/2,W,H/2);
+  // floor shine
+  ctx.fillStyle='rgba(255,255,255,0.05)';
+  ctx.fillRect(0,H/2,W,3);
 }
 // Draw walls from raycast
 function drawWalls(strips){
