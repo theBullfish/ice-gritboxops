@@ -36,13 +36,13 @@ const MAP=[
 1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3];
 function mapAt(x,y){return(x>=0&&x<MAP_S&&y>=0&&y<MAP_S)?MAP[y*MAP_S+x]:3;}
-// Wall colors - airport style
+// Wall colors - DOOM style dark airport
 const WC={
-  1:{l:'#6ca6cd',d:'#4a7a99'}, // glass walls - blue tint
-  2:{l:'#b0b0b0',d:'#888888'}, // concrete pillars - grey
-  3:{l:'#d0c8b8',d:'#a89880'}, // terminal walls - beige/tan
-  4:{l:'#3a3a4a',d:'#2a2a3a'}, // check-in counters - dark
-  5:{l:'#4a4a5a',d:'#3a3a4a'}  // gate desks - dark grey
+  1:{l:'#2a4a5a',d:'#1a3040'}, // glass walls - dark blue-green
+  2:{l:'#5a5a5a',d:'#3a3a3a'}, // concrete pillars - dark grey
+  3:{l:'#6a5a48',d:'#4a3a28'}, // terminal walls - dark brown
+  4:{l:'#2a2a35',d:'#1a1a25'}, // check-in counters - near black
+  5:{l:'#3a3a45',d:'#2a2a35'}  // gate desks - dark blue-grey
 };
 // ─── EFFECTS ─────────────────────────────────────
 let screenShake=0;let particles=[];let scorePopups=[];
@@ -75,11 +75,11 @@ function drawEffects(){
   ctx.globalAlpha=1;
 }
 function drawScanlines(){
-  ctx.fillStyle='rgba(0,0,0,0.08)';
+  ctx.fillStyle='rgba(0,0,0,0.12)';
   for(let y=0;y<H;y+=2)ctx.fillRect(0,y,W,1);
-  // vignette
-  let vg=ctx.createRadialGradient(W/2,H/2,H*0.4,W/2,H/2,H*0.9);
-  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.4)');
+  // heavy vignette - DOOM CRT feel
+  let vg=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.85);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(0.7,'rgba(0,0,0,0.15)');vg.addColorStop(1,'rgba(0,0,0,0.6)');
   ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
 }
 function drawMinimap(){
@@ -88,10 +88,10 @@ function drawMinimap(){
   ctx.fillStyle='#000';ctx.fillRect(ox-1,oy-1,MAP_S*ms+2,MAP_S*ms+2);
   for(let y=0;y<MAP_S;y++)for(let x=0;x<MAP_S;x++){
     let m=mapAt(x,y);
-    if(m===0)ctx.fillStyle='#222';
-    else if(m===1)ctx.fillStyle='#4a6a8a';
-    else if(m===4||m===5)ctx.fillStyle='#333';
-    else ctx.fillStyle='#665';
+    if(m===0)ctx.fillStyle='#111';
+    else if(m===1)ctx.fillStyle='#1a3040';
+    else if(m===4||m===5)ctx.fillStyle='#1a1a25';
+    else ctx.fillStyle='#3a2a1a';
     ctx.fillRect(ox+x*ms,oy+y*ms,ms,ms);
   }
   // player dot
@@ -169,65 +169,106 @@ function castRays(){
   }
   return strips;
 }
-// Draw airport ceiling and floor
+// Draw DOOM-style ceiling and floor
 function drawBackground(){
   let horizon=H/2+pitch;
-  // ceiling - fluorescent white/grey
+  // ceiling - dark, oppressive
   let grd=ctx.createLinearGradient(0,0,0,horizon);
-  grd.addColorStop(0,'#e8e4e0');grd.addColorStop(0.5,'#d0ccc4');grd.addColorStop(1,'#b8b0a8');
+  grd.addColorStop(0,'#0a0a0a');grd.addColorStop(0.4,'#141410');grd.addColorStop(0.8,'#1e1a14');grd.addColorStop(1,'#28221a');
   ctx.fillStyle=grd;ctx.fillRect(0,0,W,horizon);
-  // fluorescent light strips
-  ctx.fillStyle='rgba(255,255,240,0.6)';
-  for(let i=0;i<4;i++){ctx.fillRect(W*0.1+i*W*0.22,0,W*0.12,H*0.08);}
-  // floor - polished terrazzo
+  // dim emergency lights on ceiling
+  ctx.fillStyle='rgba(180,120,60,0.15)';
+  for(let i=0;i<3;i++){ctx.fillRect(W*0.15+i*W*0.3,2,W*0.06,Math.min(6,horizon*0.03));}
+  // floor - dark concrete/tile
   let grd2=ctx.createLinearGradient(0,horizon,0,H);
-  grd2.addColorStop(0,'#c8bfb0');grd2.addColorStop(0.3,'#b0a898');grd2.addColorStop(1,'#989080');
+  grd2.addColorStop(0,'#28221a');grd2.addColorStop(0.2,'#221c14');grd2.addColorStop(0.6,'#1a1610');grd2.addColorStop(1,'#12100c');
   ctx.fillStyle=grd2;ctx.fillRect(0,horizon,W,H-horizon);
-  // floor shine
-  ctx.fillStyle='rgba(255,255,255,0.05)';
-  ctx.fillRect(0,horizon,W,3);
+  // subtle floor edge line
+  ctx.fillStyle='rgba(180,140,80,0.06)';
+  ctx.fillRect(0,horizon,W,1);
 }
-// Draw walls from raycast
+// Draw DOOM-style textured walls
 function drawWalls(strips){
   for(let i=0;i<strips.length;i++){
     let s=strips[i];
     let lineH=Math.min(H*2,(H/s.dist)|0);
     let drawStart=(H-lineH)/2+pitch;
     let c=WC[s.hit]||WC[3];
-    let shade=Math.max(0.2,1-s.dist/12);
+    // DOOM-style distance shading - aggressive falloff into darkness
+    let shade=Math.max(0.08,1-s.dist/8);
+    // Base wall color
     ctx.fillStyle=s.side?c.d:c.l;
     ctx.globalAlpha=shade;
     ctx.fillRect(i,drawStart,1,lineH);
-    // Wall texture patterns
+    // Procedural texture overlay - DOOM-style brick/panel patterns
+    let texStep=lineH/64; // normalize texture to 64 texels tall
     if(s.hit===1){
-      // Glass - horizontal reflection lines
-      ctx.fillStyle='rgba(255,255,255,0.12)';
-      for(let ty=drawStart;ty<drawStart+lineH;ty+=8)ctx.fillRect(i,ty,1,1);
-      ctx.fillStyle='rgba(100,180,220,0.08)';
-      ctx.fillRect(i,drawStart,1,3);
+      // Glass security walls - dark with wire mesh pattern
+      ctx.fillStyle='rgba(40,80,100,0.3)';
+      for(let ty=0;ty<64;ty+=8){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep));}
+      // wire cross pattern
+      if((i%6)<1){ctx.fillStyle='rgba(100,160,180,0.15)';ctx.fillRect(i,drawStart,1,lineH);}
+      // top/bottom frame
+      ctx.fillStyle='rgba(60,100,120,0.25)';
+      ctx.fillRect(i,drawStart,1,Math.max(2,texStep*2));
+      ctx.fillRect(i,drawStart+lineH-Math.max(2,texStep*2),1,Math.max(2,texStep*2));
     } else if(s.hit===2){
-      // Concrete pillar - subtle grain
-      ctx.fillStyle='rgba(0,0,0,0.06)';
-      for(let ty=drawStart;ty<drawStart+lineH;ty+=4)ctx.fillRect(i,ty,1,1);
+      // Concrete pillars - heavy industrial look, mortar lines
+      // Horizontal mortar every 8 texels
+      ctx.fillStyle='rgba(0,0,0,0.2)';
+      for(let ty=0;ty<64;ty+=8){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep*0.5));}
+      // Vertical mortar offset per row (brick pattern)
+      let brickRow=((drawStart|0)+i*7)%16;
+      if(brickRow<1){ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(i,drawStart,1,lineH);}
+      // Grime at base
+      ctx.fillStyle='rgba(20,15,10,0.2)';
+      ctx.fillRect(i,drawStart+lineH*0.8,1,lineH*0.2);
     } else if(s.hit===3){
-      // Terminal wall - horizontal panel lines
-      ctx.fillStyle='rgba(0,0,0,0.1)';
-      for(let ty=drawStart;ty<drawStart+lineH;ty+=12)ctx.fillRect(i,ty,1,2);
+      // Terminal walls - DOOM-style tech panels with rivets
+      // Panel border lines every 16 texels
+      ctx.fillStyle='rgba(0,0,0,0.25)';
+      for(let ty=0;ty<64;ty+=16){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep*0.8));}
+      // Vertical panel divisions
+      if(i%24<1){ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(i,drawStart,1,lineH);}
+      // Panel highlight (top edge catch light)
+      if(i%24===1){ctx.fillStyle='rgba(140,110,70,0.12)';ctx.fillRect(i,drawStart,1,lineH);}
+      // Random grime splotches
+      if((i*31+drawStart*7)%47<3){ctx.fillStyle='rgba(10,8,5,0.15)';ctx.fillRect(i,drawStart+lineH*0.5,1,lineH*0.3);}
     } else if(s.hit===4){
-      // Counter - edge highlight
-      ctx.fillStyle='rgba(255,255,255,0.08)';
-      ctx.fillRect(i,drawStart,1,2);
+      // Check-in counters - dark metal with riveted seams
+      ctx.fillStyle='rgba(60,80,100,0.15)';
+      for(let ty=0;ty<64;ty+=4){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep*0.3));}
+      // Top edge highlight
+      ctx.fillStyle='rgba(80,100,120,0.2)';
+      ctx.fillRect(i,drawStart,1,Math.max(2,texStep));
+      // Rivet dots
+      if(i%8===0){ctx.fillStyle='rgba(100,120,140,0.2)';
+        for(let ty=4;ty<60;ty+=12){ctx.fillRect(i,drawStart+ty*texStep,1,Math.max(1,texStep*0.8));}}
     } else if(s.hit===5){
-      // Gate desk - subtle stripe
-      ctx.fillStyle='rgba(0,255,0,0.04)';
-      for(let ty=drawStart;ty<drawStart+lineH;ty+=6)ctx.fillRect(i,ty,1,1);
+      // Gate desks - computer terminal look
+      // Screen-like glow area in center
+      if(i%20>4&&i%20<16){
+        ctx.fillStyle='rgba(0,40,20,0.15)';ctx.fillRect(i,drawStart+lineH*0.2,1,lineH*0.4);
+        // scan line on "screen"
+        let scanY=drawStart+lineH*0.2+((Date.now()/50+i)%((lineH*0.4)|1));
+        ctx.fillStyle='rgba(0,80,40,0.1)';ctx.fillRect(i,scanY,1,2);
+      }
+      // Frame
+      ctx.fillStyle='rgba(0,0,0,0.2)';
+      ctx.fillRect(i,drawStart,1,Math.max(1,texStep));
+      ctx.fillRect(i,drawStart+lineH-Math.max(1,texStep),1,Math.max(1,texStep));
+    }
+    // Distance fog - fade to black
+    if(s.dist>3){
+      ctx.fillStyle='rgba(0,0,0,'+(Math.min(0.7,(s.dist-3)/10))+')';
+      ctx.fillRect(i,drawStart,1,lineH);
     }
     ctx.globalAlpha=1;
   }
 }
 // Draw sprite for enemy type
 function drawEnemySprite(e,screenX,screenH,dist){
-  let shade=Math.max(0.3,1-dist/10);
+  let shade=Math.max(0.15,1-dist/8);
   let t=ENEMY_TYPES[e.type];
   let w=screenH*0.6*t.size,h=screenH*t.size;
   let x=screenX-w/2,y=H/2+pitch-h/2;
