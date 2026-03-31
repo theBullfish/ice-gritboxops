@@ -109,7 +109,7 @@ function drawMinimap(){
   ctx.globalAlpha=1;
 }
 // Player state
-let px=2.5,py=2.5,pa=0,hp=100,ammo=42,score=0,wave=1,running=false,paused=false;
+let px=2.5,py=2.5,pa=0,pitch=0,hp=100,ammo=42,score=0,wave=1,running=false,paused=false;
 let keys={};let musicOn=true;
 // Enemies
 let enemies=[];let projectiles=[];let msgTimer=0;let msgText='';
@@ -171,27 +171,28 @@ function castRays(){
 }
 // Draw airport ceiling and floor
 function drawBackground(){
+  let horizon=H/2+pitch;
   // ceiling - fluorescent white/grey
-  let grd=ctx.createLinearGradient(0,0,0,H/2);
+  let grd=ctx.createLinearGradient(0,0,0,horizon);
   grd.addColorStop(0,'#e8e4e0');grd.addColorStop(0.5,'#d0ccc4');grd.addColorStop(1,'#b8b0a8');
-  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H/2);
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,horizon);
   // fluorescent light strips
   ctx.fillStyle='rgba(255,255,240,0.6)';
   for(let i=0;i<4;i++){ctx.fillRect(W*0.1+i*W*0.22,0,W*0.12,H*0.08);}
   // floor - polished terrazzo
-  let grd2=ctx.createLinearGradient(0,H/2,0,H);
+  let grd2=ctx.createLinearGradient(0,horizon,0,H);
   grd2.addColorStop(0,'#c8bfb0');grd2.addColorStop(0.3,'#b0a898');grd2.addColorStop(1,'#989080');
-  ctx.fillStyle=grd2;ctx.fillRect(0,H/2,W,H/2);
+  ctx.fillStyle=grd2;ctx.fillRect(0,horizon,W,H-horizon);
   // floor shine
   ctx.fillStyle='rgba(255,255,255,0.05)';
-  ctx.fillRect(0,H/2,W,3);
+  ctx.fillRect(0,horizon,W,3);
 }
 // Draw walls from raycast
 function drawWalls(strips){
   for(let i=0;i<strips.length;i++){
     let s=strips[i];
     let lineH=Math.min(H*2,(H/s.dist)|0);
-    let drawStart=(H-lineH)/2;
+    let drawStart=(H-lineH)/2+pitch;
     let c=WC[s.hit]||WC[3];
     let shade=Math.max(0.2,1-s.dist/12);
     ctx.fillStyle=s.side?c.d:c.l;
@@ -229,7 +230,7 @@ function drawEnemySprite(e,screenX,screenH,dist){
   let shade=Math.max(0.3,1-dist/10);
   let t=ENEMY_TYPES[e.type];
   let w=screenH*0.6*t.size,h=screenH*t.size;
-  let x=screenX-w/2,y=H/2-h/2;
+  let x=screenX-w/2,y=H/2+pitch-h/2;
   ctx.globalAlpha=shade;
   // wobble if hit
   if(e.hits>=1)x+=Math.sin(Date.now()/100)*e.hits*3;
@@ -304,15 +305,16 @@ function drawEnemySprite(e,screenX,screenH,dist){
 function drawWeapon(throwAnim){
   let bob=running?Math.sin(Date.now()/80)*5:Math.sin(Date.now()/200)*2;
   let throwOff=throwAnim>0?-throwAnim*30:0;
+  let pOff=pitch*0.3;
   // arm
   ctx.fillStyle='#c4956a';
-  ctx.fillRect(W*0.55+bob,H*0.6+throwOff,80,150);
+  ctx.fillRect(W*0.55+bob,H*0.6+throwOff+pOff,80,150);
   // hand
-  ctx.fillRect(W*0.55+bob-10,H*0.6+throwOff-10,100,30);
+  ctx.fillRect(W*0.55+bob-10,H*0.6+throwOff-10+pOff,100,30);
   // green leaf in hand
   if(throwAnim<=0){
     ctx.fillStyle='#2d8c2d';
-    let lx=W*0.58+bob,ly=H*0.58+throwOff;
+    let lx=W*0.58+bob,ly=H*0.58+throwOff+pOff;
     ctx.beginPath();
     ctx.ellipse(lx,ly,15,8,Math.PI/4,0,Math.PI*2);ctx.fill();
     ctx.ellipse(lx+5,ly-5,12,6,-Math.PI/4,0,Math.PI*2);ctx.fill();
@@ -402,7 +404,7 @@ function drawProjectiles(strips){
     if(dist<0.1)continue;
     let sx=(-dx*Math.sin(pa)+dy*Math.cos(pa))/dist;
     let screenX=W/2+sx*W;
-    let screenY=H/2;
+    let screenY=H/2+pitch;
     let sz=Math.max(2,20/dist);
     ctx.fillStyle='#2d8c2d';
     ctx.beginPath();ctx.arc(screenX,screenY,sz,0,Math.PI*2);ctx.fill();
@@ -442,7 +444,7 @@ function stopMusic(){
 }
 // ─── MOBILE TOUCH CONTROLS ───────────────────────
 let isMobile='ontouchstart' in window;
-let touchMoveX=0,touchMoveY=0,touchLookDX=0;
+let touchMoveX=0,touchMoveY=0,touchLookDX=0,touchLookDY=0;
 let stickTouchId=null,lookTouchId=null;
 function initMobile(){
   if(!isMobile)return;
@@ -488,22 +490,23 @@ function initMobile(){
   });
   // Look zone - swipe to look
   let lookZone=document.getElementById('lookZone');
-  let lastLookX=0;
+  let lastLookX=0,lastLookY=0;
   lookZone.addEventListener('touchstart',e=>{
     e.preventDefault();lookTouchId=e.changedTouches[0].identifier;
-    lastLookX=e.changedTouches[0].clientX;
+    lastLookX=e.changedTouches[0].clientX;lastLookY=e.changedTouches[0].clientY;
   },{passive:false});
   lookZone.addEventListener('touchmove',e=>{
     e.preventDefault();
     for(let t of e.changedTouches){
       if(t.identifier===lookTouchId){
         touchLookDX=(t.clientX-lastLookX)*0.005;
-        lastLookX=t.clientX;
+        touchLookDY=(t.clientY-lastLookY)*0.8;
+        lastLookX=t.clientX;lastLookY=t.clientY;
       }
     }
   },{passive:false});
   lookZone.addEventListener('touchend',e=>{
-    for(let t of e.changedTouches){if(t.identifier===lookTouchId){lookTouchId=null;touchLookDX=0;}}
+    for(let t of e.changedTouches){if(t.identifier===lookTouchId){lookTouchId=null;touchLookDX=0;touchLookDY=0;}}
   });
   // Fire button
   rb.addEventListener('touchstart',e=>{e.preventDefault();if(running)fireProjectile();},{passive:false});
@@ -521,7 +524,7 @@ canvas.addEventListener('click',()=>{
   canvas.requestPointerLock();fireProjectile();
 });
 document.addEventListener('mousemove',e=>{
-  if(document.pointerLockElement===canvas)pa+=e.movementX*0.003;
+  if(document.pointerLockElement===canvas){pa+=e.movementX*0.003;pitch=Math.max(-H/3,Math.min(H/3,pitch-e.movementY*0.8));}
 });
 // Game loop
 let lastTime=0;
@@ -540,6 +543,7 @@ function gameLoop(ts){
     if(keys['d']||touchMoveX>0.2){nx+=Math.cos(pa+Math.PI/2)*spd;ny+=Math.sin(pa+Math.PI/2)*spd;}
     // touch look
     if(touchLookDX){pa+=touchLookDX;touchLookDX=0;}
+    if(touchLookDY){pitch=Math.max(-H/3,Math.min(H/3,pitch-touchLookDY));touchLookDY=0;}
     if(mapAt(nx|0,py|0)===0)px=nx;
     if(mapAt(px|0,ny|0)===0)py=ny;
     updateProjectiles();
@@ -631,7 +635,7 @@ const Game={
   start(){
     let nameIn=document.getElementById('nameInput');
     playerName=nameIn?nameIn.value.trim()||'ANON':'ANON';
-    px=2.5;py=2.5;pa=0;hp=100;ammo=42;score=0;wave=1;kills=0;
+    px=2.5;py=2.5;pa=0;pitch=0;hp=100;ammo=42;score=0;wave=1;kills=0;
     enemies=[];projectiles=[];running=true;paused=false;
     document.getElementById('menu').style.display='none';
     document.getElementById('hud').style.display='block';
