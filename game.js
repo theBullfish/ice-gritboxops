@@ -7,7 +7,8 @@ const SB_HEADERS = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY
 // ─────────────────────────────────────────────────
 const W=640,H=480,MAP_S=24,FOV=Math.PI/3,HALF_FOV=FOV/2;
 const canvas=document.getElementById('gameCanvas');
-const ctx=canvas.getContext('2d');canvas.width=W;canvas.height=H;
+const ctx=canvas.getContext('2d');
+canvas.width=Math.min(W,window.innerWidth);canvas.height=Math.min(H,window.innerHeight);
 const MAP=[
 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
 3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
@@ -334,6 +335,74 @@ function stopMusic(){
     window.spotifyController.togglePlay();
   }
 }
+// ─── MOBILE TOUCH CONTROLS ───────────────────────
+let isMobile='ontouchstart' in window;
+let touchMoveX=0,touchMoveY=0,touchLookDX=0;
+let stickTouchId=null,lookTouchId=null;
+function initMobile(){
+  if(!isMobile)return;
+  document.getElementById('mobileControls').style.display='block';
+  // Draw left stick base
+  let ls=document.getElementById('leftStick');
+  let lc=ls.getContext('2d');
+  function drawStick(dx,dy){
+    lc.clearRect(0,0,150,150);
+    lc.strokeStyle='rgba(0,255,0,0.3)';lc.lineWidth=2;
+    lc.beginPath();lc.arc(75,75,60,0,Math.PI*2);lc.stroke();
+    lc.fillStyle='rgba(0,255,0,0.4)';
+    lc.beginPath();lc.arc(75+dx*40,75+dy*40,22,0,Math.PI*2);lc.fill();
+  }
+  drawStick(0,0);
+  // Draw fire button
+  let rb=document.getElementById('rightBtn');
+  let rc=rb.getContext('2d');
+  rc.strokeStyle='rgba(0,255,0,0.5)';rc.lineWidth=2;
+  rc.beginPath();rc.arc(45,45,38,0,Math.PI*2);rc.stroke();
+  rc.fillStyle='rgba(0,255,0,0.15)';
+  rc.beginPath();rc.arc(45,45,38,0,Math.PI*2);rc.fill();
+  rc.fillStyle='#0f0';rc.font='11px monospace';rc.textAlign='center';
+  rc.fillText('THROW',45,48);
+  // Left stick touch
+  ls.addEventListener('touchstart',e=>{e.preventDefault();stickTouchId=e.changedTouches[0].identifier;},{passive:false});
+  ls.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    for(let t of e.changedTouches){
+      if(t.identifier===stickTouchId){
+        let r=ls.getBoundingClientRect();
+        let dx=(t.clientX-r.left-75)/60, dy=(t.clientY-r.top-75)/60;
+        dx=Math.max(-1,Math.min(1,dx));dy=Math.max(-1,Math.min(1,dy));
+        touchMoveX=dx;touchMoveY=dy;
+        drawStick(dx,dy);
+      }
+    }
+  },{passive:false});
+  ls.addEventListener('touchend',e=>{
+    for(let t of e.changedTouches){
+      if(t.identifier===stickTouchId){stickTouchId=null;touchMoveX=0;touchMoveY=0;drawStick(0,0);}
+    }
+  });
+  // Look zone - swipe to look
+  let lookZone=document.getElementById('lookZone');
+  let lastLookX=0;
+  lookZone.addEventListener('touchstart',e=>{
+    e.preventDefault();lookTouchId=e.changedTouches[0].identifier;
+    lastLookX=e.changedTouches[0].clientX;
+  },{passive:false});
+  lookZone.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    for(let t of e.changedTouches){
+      if(t.identifier===lookTouchId){
+        touchLookDX=(t.clientX-lastLookX)*0.005;
+        lastLookX=t.clientX;
+      }
+    }
+  },{passive:false});
+  lookZone.addEventListener('touchend',e=>{
+    for(let t of e.changedTouches){if(t.identifier===lookTouchId){lookTouchId=null;touchLookDX=0;}}
+  });
+  // Fire button
+  rb.addEventListener('touchstart',e=>{e.preventDefault();if(running)fireProjectile();},{passive:false});
+}
 // Input
 document.addEventListener('keydown',e=>{
   keys[e.key.toLowerCase()]=true;
@@ -357,13 +426,15 @@ function gameLoop(ts){
   if(throwAnim>0)throwAnim=Math.max(0,throwAnim-dt*5);
   if(msgTimer>0){msgTimer--;if(msgTimer<=0)document.getElementById('message').style.display='none';}
   if(!paused){
-    // movement
+    // movement (keyboard + touch)
     let spd=3*dt*(keys['shift']?1.8:1);
     let nx=px,ny=py;
-    if(keys['w']){nx+=Math.cos(pa)*spd;ny+=Math.sin(pa)*spd;}
-    if(keys['s']){nx-=Math.cos(pa)*spd;ny-=Math.sin(pa)*spd;}
-    if(keys['a']){nx+=Math.cos(pa-Math.PI/2)*spd;ny+=Math.sin(pa-Math.PI/2)*spd;}
-    if(keys['d']){nx+=Math.cos(pa+Math.PI/2)*spd;ny+=Math.sin(pa+Math.PI/2)*spd;}
+    if(keys['w']||touchMoveY<-0.2){nx+=Math.cos(pa)*spd;ny+=Math.sin(pa)*spd;}
+    if(keys['s']||touchMoveY>0.2){nx-=Math.cos(pa)*spd;ny-=Math.sin(pa)*spd;}
+    if(keys['a']||touchMoveX<-0.2){nx+=Math.cos(pa-Math.PI/2)*spd;ny+=Math.sin(pa-Math.PI/2)*spd;}
+    if(keys['d']||touchMoveX>0.2){nx+=Math.cos(pa+Math.PI/2)*spd;ny+=Math.sin(pa+Math.PI/2)*spd;}
+    // touch look
+    if(touchLookDX){pa+=touchLookDX;touchLookDX=0;}
     if(mapAt(nx|0,py|0)===0)px=nx;
     if(mapAt(px|0,ny|0)===0)py=ny;
     updateProjectiles();
@@ -454,7 +525,8 @@ const Game={
     document.getElementById('menu').style.display='none';
     document.getElementById('hud').style.display='block';
     document.getElementById('crosshair').style.display='block';
-    canvas.requestPointerLock();
+    if(!isMobile)canvas.requestPointerLock();
+    initMobile();
     if(musicOn)startMusic();
     spawnWave();lastTime=performance.now();
     requestAnimationFrame(gameLoop);
@@ -468,7 +540,8 @@ const Game={
       document.getElementById('menu').style.display='none';
       document.getElementById('hud').style.display='block';
       document.getElementById('crosshair').style.display='block';
-      canvas.requestPointerLock();
+      if(!isMobile)canvas.requestPointerLock();
+      initMobile();
       if(musicOn)startMusic();
       lastTime=performance.now();
       requestAnimationFrame(gameLoop);
