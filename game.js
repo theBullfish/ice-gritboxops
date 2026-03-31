@@ -266,7 +266,7 @@ function drawWalls(strips){
     ctx.globalAlpha=1;
   }
 }
-// Draw sprite for enemy type
+// Draw DOOM-style chunky pixel sprites
 function drawEnemySprite(e,screenX,screenH,dist){
   let shade=Math.max(0.15,1-dist/8);
   let t=ENEMY_TYPES[e.type];
@@ -275,93 +275,379 @@ function drawEnemySprite(e,screenX,screenH,dist){
   ctx.globalAlpha=shade;
   // wobble if hit
   if(e.hits>=1)x+=Math.sin(Date.now()/100)*e.hits*3;
-  // body
-  ctx.fillStyle=t.color;
+  // animation bob
+  let bob=Math.sin(Date.now()/200+e.x*3)*h*0.015;
+  let breathe=Math.sin(Date.now()/400+e.y*5)*h*0.01;
+
   if(e.type==='bovino'){
-    ctx.fillRect(x,y+h*0.3,w,h*0.5);// body
-    ctx.fillStyle=t.accent;
-    ctx.fillRect(x+w*0.2,y+h*0.1,w*0.15,h*0.25);// left horn
-    ctx.fillRect(x+w*0.65,y+h*0.1,w*0.15,h*0.25);// right horn
-    ctx.fillStyle='#fff';ctx.fillRect(x+w*0.3,y+h*0.3,w*0.4,h*0.2);//face
-    // legs
-    ctx.fillStyle=t.color;
-    ctx.fillRect(x+w*0.15,y+h*0.8,w*0.15,h*0.2);
-    ctx.fillRect(x+w*0.7,y+h*0.8,w*0.15,h*0.2);
-  } else if(e.type==='birdleg'){
-    ctx.fillRect(x+w*0.2,y,w*0.6,h*0.5);// torso
-    ctx.fillStyle=t.accent;
-    ctx.fillRect(x+w*0.3,y+h*0.05,w*0.4,h*0.15);// head
-    // skinny bird legs
-    ctx.strokeStyle=t.accent;ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(x+w*0.35,y+h*0.5);ctx.lineTo(x+w*0.25,y+h*0.75);
-    ctx.lineTo(x+w*0.15,y+h*0.85);ctx.lineTo(x+w*0.3,y+h*0.85);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(x+w*0.65,y+h*0.5);ctx.lineTo(x+w*0.75,y+h*0.75);
-    ctx.lineTo(x+w*0.85,y+h*0.85);ctx.lineTo(x+w*0.7,y+h*0.85);ctx.stroke();
-  } else {
-    // ICE or Sheriff - humanoid
-    ctx.fillRect(x+w*0.25,y,w*0.5,h*0.25);// head
-    ctx.fillRect(x+w*0.1,y+h*0.25,w*0.8,h*0.4);// torso
-    ctx.fillRect(x+w*0.1,y+h*0.65,w*0.3,h*0.35);// left leg
-    ctx.fillRect(x+w*0.6,y+h*0.65,w*0.3,h*0.35);// right leg
-    // helmet/hat
-    ctx.fillStyle=t.accent;
-    ctx.fillRect(x+w*0.2,y-h*0.05,w*0.6,h*0.1);
-    // badge
-    if(e.type==='ice'){
-      ctx.fillStyle='#fff';ctx.font=(h*0.08|0)+'px monospace';
-      ctx.fillText('ICE',x+w*0.25,y+h*0.45);
-    } else {
-      // star badge for sheriff
-      ctx.fillStyle='#ffd700';
-      let cx2=x+w*0.5,cy2=y+h*0.35,sr=h*0.06;
-      ctx.beginPath();for(let i=0;i<5;i++){
-        let a2=-Math.PI/2+i*Math.PI*2/5;ctx.lineTo(cx2+Math.cos(a2)*sr,cy2+Math.sin(a2)*sr);
-        a2+=Math.PI/5;ctx.lineTo(cx2+Math.cos(a2)*sr*0.4,cy2+Math.sin(a2)*sr*0.4);
-      }ctx.closePath();ctx.fill();
+    // ──── BOVINO - DOOM BULL DEMON ────
+    // Massive muscular body - barrel chest
+    ctx.fillStyle='#5C3317';
+    ctx.fillRect(x+w*0.15,y+h*0.28+bob,w*0.7,h*0.42); // main body
+    ctx.fillStyle='#4a2810';
+    ctx.fillRect(x+w*0.2,y+h*0.3+bob,w*0.6,h*0.38); // body shadow/depth
+    // Thick muscular shoulders
+    ctx.fillStyle='#6a3a1a';
+    ctx.fillRect(x+w*0.08,y+h*0.25+bob,w*0.22,h*0.2); // left shoulder
+    ctx.fillRect(x+w*0.7,y+h*0.25+bob,w*0.22,h*0.2);  // right shoulder
+    // Massive bull head
+    ctx.fillStyle='#5C3317';
+    ctx.fillRect(x+w*0.25,y+h*0.08+bob,w*0.5,h*0.25); // head block
+    ctx.fillStyle='#4a2810';
+    ctx.fillRect(x+w*0.3,y+h*0.15+bob,w*0.4,h*0.15);  // snout
+    // HORNS - curved, menacing
+    ctx.fillStyle='#d4c8a0';
+    ctx.fillRect(x+w*0.1,y+h*0.02+bob,w*0.12,h*0.06); // left horn base
+    ctx.fillRect(x+w*0.05,y-h*0.02+bob,w*0.08,h*0.06); // left horn tip
+    ctx.fillRect(x+w*0.78,y+h*0.02+bob,w*0.12,h*0.06); // right horn base
+    ctx.fillRect(x+w*0.87,y-h*0.02+bob,w*0.08,h*0.06); // right horn tip
+    // Nostrils - steaming
+    ctx.fillStyle='#2a1508';
+    ctx.fillRect(x+w*0.38,y+h*0.24+bob,w*0.08,h*0.04);
+    ctx.fillRect(x+w*0.54,y+h*0.24+bob,w*0.08,h*0.04);
+    // Snort steam
+    if(Date.now()%2000<500){
+      ctx.fillStyle='rgba(200,200,200,0.3)';
+      ctx.fillRect(x+w*0.35,y+h*0.28+bob,w*0.05,h*0.03);
+      ctx.fillRect(x+w*0.6,y+h*0.28+bob,w*0.05,h*0.03);
     }
+    // Eyes - angry, glowing
+    ctx.fillStyle=e.hits>=2?'#ff0000':'#ff6600';
+    ctx.fillRect(x+w*0.32,y+h*0.12+bob,w*0.1,h*0.06);
+    ctx.fillRect(x+w*0.58,y+h*0.12+bob,w*0.1,h*0.06);
+    // Angry brow ridge
+    ctx.fillStyle='#3a1a08';
+    ctx.fillRect(x+w*0.28,y+h*0.1+bob,w*0.18,h*0.03);
+    ctx.fillRect(x+w*0.54,y+h*0.1+bob,w*0.18,h*0.03);
+    // Thick hooved legs
+    ctx.fillStyle='#4a2810';
+    ctx.fillRect(x+w*0.15,y+h*0.68+bob,w*0.18,h*0.22);
+    ctx.fillRect(x+w*0.67,y+h*0.68+bob,w*0.18,h*0.22);
+    // Hooves
+    ctx.fillStyle='#2a1508';
+    ctx.fillRect(x+w*0.13,y+h*0.88+bob,w*0.22,h*0.06);
+    ctx.fillRect(x+w*0.65,y+h*0.88+bob,w*0.22,h*0.06);
+    // Tail
+    ctx.fillStyle='#5C3317';
+    ctx.fillRect(x+w*0.85,y+h*0.35+bob,w*0.08,h*0.15);
+    ctx.fillRect(x+w*0.88,y+h*0.32+bob,w*0.06,h*0.05);
+    // Belly highlight
+    ctx.fillStyle='rgba(140,90,50,0.3)';
+    ctx.fillRect(x+w*0.3,y+h*0.45+bob,w*0.4,h*0.15);
+    // Muscle definition lines
+    ctx.fillStyle='rgba(0,0,0,0.15)';
+    ctx.fillRect(x+w*0.35,y+h*0.3+bob,w*0.02,h*0.2);
+    ctx.fillRect(x+w*0.63,y+h*0.3+bob,w*0.02,h*0.2);
+
+  } else if(e.type==='birdleg'){
+    // ──── BIRD-LEGGED HO - ABSURD DOOM DEMON ────
+    // Thicc upper body on ridiculous skinny bird legs
+    // Big poofy hair/feathers on top
+    ctx.fillStyle='#cc2266';
+    ctx.fillRect(x+w*0.2,y+h*0.0+bob,w*0.6,h*0.12);
+    ctx.fillRect(x+w*0.15,y+h*0.02+bob,w*0.7,h*0.08);
+    // Head
+    ctx.fillStyle='#AA336A';
+    ctx.fillRect(x+w*0.25,y+h*0.1+bob,w*0.5,h*0.15);
+    // Face
+    ctx.fillStyle='#d4a0b0';
+    ctx.fillRect(x+w*0.3,y+h*0.12+bob,w*0.4,h*0.1);
+    // Eyes - beady, menacing
+    ctx.fillStyle=e.hits>=2?'#ff0000':'#ffff00';
+    ctx.fillRect(x+w*0.35,y+h*0.13+bob,w*0.08,h*0.04);
+    ctx.fillRect(x+w*0.57,y+h*0.13+bob,w*0.08,h*0.04);
+    // Pupils
+    ctx.fillStyle='#000';
+    ctx.fillRect(x+w*0.37,y+h*0.14+bob,w*0.04,h*0.03);
+    ctx.fillRect(x+w*0.59,y+h*0.14+bob,w*0.04,h*0.03);
+    // Beak
+    ctx.fillStyle='#ff8800';
+    ctx.fillRect(x+w*0.42,y+h*0.17+bob,w*0.16,h*0.06);
+    ctx.fillRect(x+w*0.44,y+h*0.22+bob,w*0.12,h*0.03);
+    // Chunky torso with feathery texture
+    ctx.fillStyle='#AA336A';
+    ctx.fillRect(x+w*0.15,y+h*0.25+bob,w*0.7,h*0.3);
+    // Feather texture
+    ctx.fillStyle='#883058';
+    for(let fy=0;fy<5;fy++){
+      ctx.fillRect(x+w*0.18,y+h*(0.27+fy*0.055)+bob,w*0.64,h*0.02);
+    }
+    // Wings/arms out
+    ctx.fillStyle='#992855';
+    ctx.fillRect(x+w*0.0,y+h*0.28+bob,w*0.18,h*0.15);
+    ctx.fillRect(x+w*0.82,y+h*0.28+bob,w*0.18,h*0.15);
+    // Wing feather tips
+    ctx.fillStyle='#FF69B4';
+    ctx.fillRect(x-w*0.02,y+h*0.32+bob,w*0.06,h*0.08);
+    ctx.fillRect(x+w*0.96,y+h*0.32+bob,w*0.06,h*0.08);
+    // Short skirt/tutu area
+    ctx.fillStyle='#dd4488';
+    ctx.fillRect(x+w*0.1,y+h*0.52+bob,w*0.8,h*0.08);
+    // BIRD LEGS - the signature look - absurdly skinny
+    ctx.fillStyle='#ffaa44';
+    // Left leg - bent backward like a bird
+    ctx.fillRect(x+w*0.3,y+h*0.6+bob,w*0.06,h*0.15);  // upper
+    ctx.fillRect(x+w*0.25,y+h*0.73+bob,w*0.06,h*0.12); // lower (angled)
+    // Left foot - three-toed
+    ctx.fillRect(x+w*0.18,y+h*0.84+bob,w*0.18,h*0.03);
+    ctx.fillRect(x+w*0.2,y+h*0.83+bob,w*0.03,h*0.05);
+    ctx.fillRect(x+w*0.28,y+h*0.83+bob,w*0.03,h*0.05);
+    ctx.fillRect(x+w*0.35,y+h*0.83+bob,w*0.03,h*0.05);
+    // Right leg
+    ctx.fillRect(x+w*0.64,y+h*0.6+bob,w*0.06,h*0.15);
+    ctx.fillRect(x+w*0.69,y+h*0.73+bob,w*0.06,h*0.12);
+    // Right foot
+    ctx.fillRect(x+w*0.62,y+h*0.84+bob,w*0.18,h*0.03);
+    ctx.fillRect(x+w*0.62,y+h*0.83+bob,w*0.03,h*0.05);
+    ctx.fillRect(x+w*0.69,y+h*0.83+bob,w*0.03,h*0.05);
+    ctx.fillRect(x+w*0.76,y+h*0.83+bob,w*0.03,h*0.05);
+    // Knee joints
+    ctx.fillStyle='#dd8822';
+    ctx.fillRect(x+w*0.27,y+h*0.73+bob,w*0.1,h*0.04);
+    ctx.fillRect(x+w*0.63,y+h*0.73+bob,w*0.1,h*0.04);
+
+  } else if(e.type==='ice'){
+    // ──── ICE AGENT - DOOM SOLDIER STYLE ────
+    // Tactical helmet
+    ctx.fillStyle='#0a0a1e';
+    ctx.fillRect(x+w*0.2,y+h*0.0+bob,w*0.6,h*0.08);  // helmet top
+    ctx.fillStyle='#12122e';
+    ctx.fillRect(x+w*0.22,y+h*0.06+bob,w*0.56,h*0.14); // helmet body
+    // Visor
+    ctx.fillStyle='#003366';
+    ctx.fillRect(x+w*0.25,y+h*0.1+bob,w*0.5,h*0.06);
+    // Visor glint
+    ctx.fillStyle='rgba(100,180,255,0.4)';
+    ctx.fillRect(x+w*0.27,y+h*0.11+bob,w*0.15,h*0.02);
+    // Face/chin
+    ctx.fillStyle='#c4956a';
+    ctx.fillRect(x+w*0.28,y+h*0.16+bob,w*0.44,h*0.08);
+    // Mouth - mean grimace
+    ctx.fillStyle='#2a1510';
+    ctx.fillRect(x+w*0.35,y+h*0.2+bob,w*0.3,h*0.02);
+    // Tactical vest/body armor
+    ctx.fillStyle='#1a1a2e';
+    ctx.fillRect(x+w*0.12,y+h*0.24+bob+breathe,w*0.76,h*0.32);
+    // Vest pouches
+    ctx.fillStyle='#0e0e1e';
+    ctx.fillRect(x+w*0.15,y+h*0.35+bob,w*0.15,h*0.1);
+    ctx.fillRect(x+w*0.7,y+h*0.35+bob,w*0.15,h*0.1);
+    // ICE patch on chest - big and visible
+    ctx.fillStyle='#0044aa';
+    ctx.fillRect(x+w*0.32,y+h*0.28+bob,w*0.36,h*0.12);
+    ctx.fillStyle='#ffffff';
+    ctx.font='bold '+(Math.max(8,h*0.08)|0)+'px monospace';
+    ctx.fillText('ICE',x+w*0.35,y+h*0.38+bob);
+    // Belt
+    ctx.fillStyle='#0a0a15';
+    ctx.fillRect(x+w*0.14,y+h*0.55+bob,w*0.72,h*0.04);
+    // Belt buckle
+    ctx.fillStyle='#888';
+    ctx.fillRect(x+w*0.44,y+h*0.55+bob,w*0.12,h*0.04);
+    // Tactical pants
+    ctx.fillStyle='#1e1e30';
+    ctx.fillRect(x+w*0.14,y+h*0.58+bob,w*0.3,h*0.3);
+    ctx.fillRect(x+w*0.56,y+h*0.58+bob,w*0.3,h*0.3);
+    // Knee pads
+    ctx.fillStyle='#0a0a18';
+    ctx.fillRect(x+w*0.18,y+h*0.72+bob,w*0.12,h*0.06);
+    ctx.fillRect(x+w*0.7,y+h*0.72+bob,w*0.12,h*0.06);
+    // Combat boots
+    ctx.fillStyle='#0a0a0a';
+    ctx.fillRect(x+w*0.12,y+h*0.87+bob,w*0.32,h*0.08);
+    ctx.fillRect(x+w*0.56,y+h*0.87+bob,w*0.32,h*0.08);
+    // Arms holding weapon
+    ctx.fillStyle='#1a1a2e';
+    ctx.fillRect(x+w*0.0,y+h*0.26+bob,w*0.15,h*0.2);  // left arm
+    ctx.fillRect(x+w*0.85,y+h*0.26+bob,w*0.15,h*0.2); // right arm
+    // Hands
+    ctx.fillStyle='#c4956a';
+    ctx.fillRect(x+w*0.0,y+h*0.44+bob,w*0.08,h*0.06);
+    ctx.fillRect(x+w*0.92,y+h*0.44+bob,w*0.08,h*0.06);
+    // Taser/weapon in hand
+    ctx.fillStyle='#333';
+    ctx.fillRect(x+w*0.88,y+h*0.38+bob,w*0.18,h*0.05);
+    ctx.fillStyle='#ff0';
+    ctx.fillRect(x+w*1.02,y+h*0.39+bob,w*0.06,h*0.03);
+
+  } else {
+    // ──── SHERIFF DEPUTY - DOOM SOLDIER VARIANT ────
+    // Cowboy hat / campaign cover
+    ctx.fillStyle='#6B4E1B';
+    ctx.fillRect(x+w*0.1,y+h*0.04+bob,w*0.8,h*0.04);  // brim
+    ctx.fillStyle='#8B6914';
+    ctx.fillRect(x+w*0.25,y-h*0.02+bob,w*0.5,h*0.08);  // crown
+    ctx.fillRect(x+w*0.3,y-h*0.06+bob,w*0.4,h*0.05);   // crown top
+    // Head
+    ctx.fillStyle='#c4956a';
+    ctx.fillRect(x+w*0.25,y+h*0.08+bob,w*0.5,h*0.14);
+    // Sunglasses
+    ctx.fillStyle='#111';
+    ctx.fillRect(x+w*0.28,y+h*0.1+bob,w*0.18,h*0.05);
+    ctx.fillRect(x+w*0.54,y+h*0.1+bob,w*0.18,h*0.05);
+    ctx.fillRect(x+w*0.46,y+h*0.11+bob,w*0.08,h*0.03); // bridge
+    // Mustache
+    ctx.fillStyle='#3a2a10';
+    ctx.fillRect(x+w*0.35,y+h*0.17+bob,w*0.3,h*0.03);
+    // Jaw set
+    ctx.fillStyle='#2a1510';
+    ctx.fillRect(x+w*0.38,y+h*0.19+bob,w*0.24,h*0.02);
+    // Tan uniform shirt
+    ctx.fillStyle='#CD853F';
+    ctx.fillRect(x+w*0.12,y+h*0.22+bob+breathe,w*0.76,h*0.35);
+    // Pocket flaps
+    ctx.fillStyle='#b8752e';
+    ctx.fillRect(x+w*0.2,y+h*0.3+bob,w*0.18,h*0.08);
+    ctx.fillRect(x+w*0.62,y+h*0.3+bob,w*0.18,h*0.08);
+    // Star badge - big, gold, proud
+    ctx.fillStyle='#ffd700';
+    let cx2=x+w*0.5,cy2=y+h*0.32+bob,sr=h*0.05;
+    ctx.beginPath();
+    for(let i=0;i<5;i++){
+      let a2=-Math.PI/2+i*Math.PI*2/5;ctx.lineTo(cx2+Math.cos(a2)*sr,cy2+Math.sin(a2)*sr);
+      a2+=Math.PI/5;ctx.lineTo(cx2+Math.cos(a2)*sr*0.4,cy2+Math.sin(a2)*sr*0.4);
+    }ctx.closePath();ctx.fill();
+    // Badge glint
+    ctx.fillStyle='rgba(255,255,200,0.5)';
+    ctx.fillRect(cx2-sr*0.2,cy2-sr*0.5,sr*0.3,sr*0.2);
+    // Duty belt
+    ctx.fillStyle='#2a2a1a';
+    ctx.fillRect(x+w*0.14,y+h*0.55+bob,w*0.72,h*0.05);
+    // Holster
+    ctx.fillStyle='#1a1a10';
+    ctx.fillRect(x+w*0.72,y+h*0.55+bob,w*0.12,h*0.12);
+    // Gun in holster
+    ctx.fillStyle='#333';
+    ctx.fillRect(x+w*0.74,y+h*0.56+bob,w*0.08,h*0.06);
+    // Dark pants
+    ctx.fillStyle='#3a3a28';
+    ctx.fillRect(x+w*0.14,y+h*0.59+bob,w*0.3,h*0.3);
+    ctx.fillRect(x+w*0.56,y+h*0.59+bob,w*0.3,h*0.3);
+    // Boot tops
+    ctx.fillStyle='#2a1a0a';
+    ctx.fillRect(x+w*0.12,y+h*0.82+bob,w*0.32,h*0.12);
+    ctx.fillRect(x+w*0.56,y+h*0.82+bob,w*0.32,h*0.12);
+    // Boot soles
+    ctx.fillStyle='#0a0a0a';
+    ctx.fillRect(x+w*0.12,y+h*0.92+bob,w*0.33,h*0.04);
+    ctx.fillRect(x+w*0.56,y+h*0.92+bob,w*0.33,h*0.04);
+    // Arms
+    ctx.fillStyle='#CD853F';
+    ctx.fillRect(x+w*0.0,y+h*0.24+bob,w*0.15,h*0.22);
+    ctx.fillRect(x+w*0.85,y+h*0.24+bob,w*0.15,h*0.22);
+    // Hands
+    ctx.fillStyle='#c4956a';
+    ctx.fillRect(x+w*0.0,y+h*0.44+bob,w*0.08,h*0.06);
+    ctx.fillRect(x+w*0.92,y+h*0.44+bob,w*0.08,h*0.06);
   }
-  // red eyes if hit 2+
-  if(e.hits>=2){
-    ctx.fillStyle='#f00';
-    let ey=e.type==='bovino'?y+h*0.33:e.type==='birdleg'?y+h*0.08:y+h*0.08;
-    let ex1=x+w*0.35,ex2=x+w*0.55;
-    ctx.fillRect(ex1,ey,w*0.08,w*0.08);ctx.fillRect(ex2,ey,w*0.08,w*0.08);
+
+  // ──── SHARED EFFECTS ────
+  // Red eyes when high (2+ hits) - override for humanoids
+  if(e.hits>=2&&e.type!=='bovino'){
+    let eyeY=e.type==='birdleg'?y+h*0.13+bob:e.type==='ice'?y+h*0.11+bob:y+h*0.1+bob;
+    ctx.fillStyle='#ff0000';
+    ctx.fillRect(x+w*0.33,eyeY,w*0.1,h*0.04);
+    ctx.fillRect(x+w*0.57,eyeY,w*0.1,h*0.04);
   }
-  // sitting if passive
+  // Green haze cloud when passive (sitting down baked)
   if(e.passive){
-    ctx.fillStyle='rgba(0,255,0,0.3)';ctx.fillRect(x,y+h*0.6,w,h*0.4);
+    ctx.fillStyle='rgba(0,180,0,0.2)';
+    ctx.fillRect(x-w*0.1,y+h*0.1,w*1.2,h*0.6);
+    ctx.fillStyle='rgba(50,255,50,0.15)';
+    ctx.fillRect(x+w*0.1,y-h*0.05,w*0.3,h*0.2);
+    ctx.fillRect(x+w*0.5,y+h*0.0,w*0.25,h*0.15);
+    // Sitting sprite compress - squish them down
+    ctx.fillStyle='rgba(0,100,0,0.25)';
+    ctx.fillRect(x+w*0.1,y+h*0.7,w*0.8,h*0.25);
   }
-  // text above head
+  // Yell text
   if(e.yelling>0){
-    ctx.fillStyle='#ff0';ctx.font='bold '+(h*0.12|0)+'px monospace';
-    ctx.fillText(e.yellText,x,y-5);
+    ctx.fillStyle='#ff4444';ctx.font='bold '+(Math.max(10,h*0.12)|0)+'px monospace';
+    ctx.strokeStyle='#000';ctx.lineWidth=2;
+    ctx.strokeText(e.yellText,x+w*0.1,y-h*0.02);
+    ctx.fillText(e.yellText,x+w*0.1,y-h*0.02);
   } else if(e.hits>=3){
-    ctx.fillStyle='#0f0';ctx.font=(h*0.1|0)+'px monospace';
+    ctx.fillStyle='#44ff44';ctx.font=(Math.max(8,h*0.1)|0)+'px monospace';
     let qt=e.hits>=4?HIGH_QUOTES[(e.x*7+e.y*13|0)%HIGH_QUOTES.length]:'hehe...';
-    ctx.fillText(qt,x-10,y-5);
+    ctx.strokeStyle='#000';ctx.lineWidth=1;
+    ctx.strokeText(qt,x-w*0.1,y-h*0.05);
+    ctx.fillText(qt,x-w*0.1,y-h*0.05);
   }
   ctx.globalAlpha=1;
 }
-// Draw arm/weapon
+// Draw DOOM-style weapon - THE GREEN CANNON (BFG equivalent)
 function drawWeapon(throwAnim){
   let bob=running?Math.sin(Date.now()/80)*5:Math.sin(Date.now()/200)*2;
-  let throwOff=throwAnim>0?-throwAnim*30:0;
+  let throwOff=throwAnim>0?-throwAnim*40:0;
   let pOff=pitch*0.3;
-  // arm
-  ctx.fillStyle='#c4956a';
-  ctx.fillRect(W*0.55+bob,H*0.6+throwOff+pOff,80,150);
-  // hand
-  ctx.fillRect(W*0.55+bob-10,H*0.6+throwOff-10+pOff,100,30);
-  // green leaf in hand
-  if(throwAnim<=0){
-    ctx.fillStyle='#2d8c2d';
-    let lx=W*0.58+bob,ly=H*0.58+throwOff+pOff;
-    ctx.beginPath();
-    ctx.ellipse(lx,ly,15,8,Math.PI/4,0,Math.PI*2);ctx.fill();
-    ctx.ellipse(lx+5,ly-5,12,6,-Math.PI/4,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#1a5c1a';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(lx-10,ly+5);ctx.lineTo(lx+15,ly-10);ctx.stroke();
+  let bx=W*0.42+bob, by=H*0.52+pOff;
+  // Muzzle flash on fire
+  if(throwAnim>0.5){
+    ctx.fillStyle='rgba(0,255,0,0.4)';
+    ctx.fillRect(bx+40,by-60+throwOff,60,40);
+    ctx.fillStyle='rgba(100,255,100,0.6)';
+    ctx.fillRect(bx+55,by-50+throwOff,30,20);
   }
+  // Weapon body - big chunky cannon
+  ctx.fillStyle='#2a2a2a';
+  ctx.fillRect(bx+10,by+throwOff,120,45); // main barrel housing
+  ctx.fillStyle='#1a1a1a';
+  ctx.fillRect(bx+15,by+5+throwOff,110,35); // inner barrel
+  // Barrel bore
+  ctx.fillStyle='#0a0a0a';
+  ctx.fillRect(bx+120,by+12+throwOff,15,20);
+  // Green energy core (the weed chamber)
+  ctx.fillStyle='#1a5c1a';
+  ctx.fillRect(bx+30,by+8+throwOff,50,28);
+  // Glowing green chamber
+  let glow=0.4+Math.sin(Date.now()/200)*0.2;
+  ctx.fillStyle='rgba(0,200,0,'+glow+')';
+  ctx.fillRect(bx+35,by+12+throwOff,40,20);
+  // Chamber details - leaf matter visible
+  ctx.fillStyle='#2d8c2d';
+  ctx.fillRect(bx+40,by+15+throwOff,8,6);
+  ctx.fillRect(bx+52,by+18+throwOff,10,5);
+  ctx.fillRect(bx+45,by+22+throwOff,7,5);
+  // Barrel rings
+  ctx.fillStyle='#3a3a3a';
+  ctx.fillRect(bx+85,by+2+throwOff,5,40);
+  ctx.fillRect(bx+100,by+2+throwOff,5,40);
+  ctx.fillRect(bx+115,by+2+throwOff,5,40);
+  // Top rail
+  ctx.fillStyle='#333';
+  ctx.fillRect(bx+20,by-3+throwOff,100,6);
+  // Side grip details
+  ctx.fillStyle='#222';
+  ctx.fillRect(bx+10,by+40+throwOff,80,8);
+  // Grip handle
+  ctx.fillStyle='#3a2a1a';
+  ctx.fillRect(bx+45,by+45+throwOff,30,50);
+  ctx.fillStyle='#2a1a0a';
+  ctx.fillRect(bx+48,by+48+throwOff,24,44);
+  // Grip texture lines
+  ctx.fillStyle='#4a3a2a';
+  for(let gy=0;gy<6;gy++){ctx.fillRect(bx+48,by+52+gy*7+throwOff,24,2);}
+  // Hand on grip
+  ctx.fillStyle='#c4956a';
+  ctx.fillRect(bx+42,by+52+throwOff,38,25);
+  // Fingers wrapping
+  ctx.fillStyle='#b8855a';
+  ctx.fillRect(bx+42,by+56+throwOff,6,18);
+  ctx.fillRect(bx+50,by+58+throwOff,6,16);
+  ctx.fillRect(bx+58,by+56+throwOff,6,18);
+  ctx.fillRect(bx+66,by+54+throwOff,6,16);
+  // Wrist/arm
+  ctx.fillStyle='#c4956a';
+  ctx.fillRect(bx+35,by+75+throwOff,50,80);
+  // Sleeve
+  ctx.fillStyle='#444';
+  ctx.fillRect(bx+30,by+100+throwOff,60,60);
+  // Ammo counter on weapon (LED style)
+  ctx.fillStyle='#001100';
+  ctx.fillRect(bx+60,by+3+throwOff,22,12);
+  ctx.fillStyle='#00ff00';
+  ctx.font='bold 9px monospace';
+  ctx.fillText(ammo<10?'0'+ammo:''+ammo,bx+63,by+12+throwOff);
 }
 // Projectiles
 function fireProjectile(){
@@ -427,6 +713,51 @@ function updateEnemies(dt){
     setTimeout(()=>spawnWave(),2000);
   }
 }
+// DOOM face - draws a pixel-art face that reacts to health
+function drawDoomFace(){
+  let fc=document.getElementById('doomFace');
+  if(!fc)return;
+  let f=fc.getContext('2d');
+  f.clearRect(0,0,40,48);
+  // Face background - skin
+  f.fillStyle='#c4956a';
+  f.fillRect(6,6,28,36);
+  // Hair
+  f.fillStyle='#3a2a1a';
+  f.fillRect(6,2,28,8);
+  // Expression based on health
+  if(hp>70){
+    // Happy/confident
+    f.fillStyle='#fff';f.fillRect(12,16,6,6);f.fillRect(22,16,6,6); // eyes
+    f.fillStyle='#222';f.fillRect(14,18,3,3);f.fillRect(24,18,3,3); // pupils
+    f.fillStyle='#a06040';f.fillRect(14,28,12,3); // mouth
+    f.fillStyle='#fff';f.fillRect(16,28,8,2); // teeth grin
+  } else if(hp>40){
+    // Concerned
+    f.fillStyle='#fff';f.fillRect(12,16,6,6);f.fillRect(22,16,6,6);
+    f.fillStyle='#222';f.fillRect(13,18,3,3);f.fillRect(25,18,3,3); // looking around
+    f.fillStyle='#a06040';f.fillRect(16,30,8,2); // tight mouth
+    // Sweat drop
+    f.fillStyle='rgba(100,180,255,0.6)';f.fillRect(32,14,3,5);
+  } else if(hp>15){
+    // Hurt/angry
+    f.fillStyle='#ff8888';f.fillRect(12,16,6,6);f.fillRect(22,16,6,6); // bloodshot eyes
+    f.fillStyle='#222';f.fillRect(14,17,3,4);f.fillRect(24,17,3,4);
+    f.fillStyle='#600';f.fillRect(10,26,2,6); // blood
+    f.fillStyle='#a06040';f.fillRect(14,30,12,3);
+    f.fillStyle='#fff';f.fillRect(16,30,3,2);f.fillRect(22,30,3,2); // gritted teeth
+    // Brow furrow
+    f.fillStyle='#8a6540';f.fillRect(10,14,8,2);f.fillRect(22,14,8,2);
+  } else {
+    // Near death - DOOM guy bloody
+    f.fillStyle='#ff4444';f.fillRect(12,16,6,6);f.fillRect(22,16,6,6);
+    f.fillStyle='#000';f.fillRect(14,18,3,3);f.fillRect(24,18,3,3);
+    f.fillStyle='#800';
+    f.fillRect(8,20,4,12);f.fillRect(28,22,4,8); // blood streams
+    f.fillRect(18,12,4,4); // forehead wound
+    f.fillStyle='#a06040';f.fillRect(14,32,12,2); // grimace
+  }
+}
 // HUD update
 function updateHUD(){
   document.getElementById('ammo').innerText=ammo;
@@ -436,6 +767,7 @@ function updateHUD(){
   document.getElementById('kills').innerText=kills;
   let vibes=hp>80?'CHILL':hp>50?'UNEASY':hp>25?'STRESSED':'PANICKING';
   document.getElementById('vibes').innerText=vibes;
+  drawDoomFace();
 }
 // Draw projectiles as green dots
 function drawProjectiles(strips){
