@@ -11,33 +11,36 @@ body { background: #000; overflow: hidden; font-family: 'Courier New', monospace
 #menu {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: linear-gradient(180deg, #1a0a00 0%, #0a0a0a 100%);
+  background: linear-gradient(180deg, #200000 0%, #0a0000 30%, #0a0a0a 60%, #000 100%);
   z-index: 10;
 }
 #menu h1 {
-  font-size: 72px; color: #0f0; text-shadow: 0 0 20px #0f0, 0 0 40px #0a0;
-  letter-spacing: 12px; margin-bottom: 5px;
+  font-size: 84px; color: #cc0000; text-shadow: 0 0 30px #ff0000, 0 0 60px #aa0000, 4px 4px 0 #500000;
+  letter-spacing: 18px; margin-bottom: 5px; font-weight: bold;
 }
-#menu .subtitle { color: #4a4; font-size: 14px; margin-bottom: 5px; }
-#menu .host { color: #4a4; font-size: 12px; margin-bottom: 30px; }
+#menu .subtitle { color: #884444; font-size: 14px; margin-bottom: 5px; letter-spacing: 3px; }
+#menu .host { color: #666; font-size: 12px; margin-bottom: 30px; }
 #menu .menuItem {
-  color: #aaa; font-size: 24px; padding: 10px 40px; cursor: pointer;
+  color: #cc0000; font-size: 22px; padding: 8px 40px; cursor: pointer;
   border: 1px solid transparent; margin: 5px; transition: all 0.2s;
+  letter-spacing: 3px;
 }
-#menu .menuItem:hover { color: #0f0; border-color: #0f0; text-shadow: 0 0 10px #0f0; }
+#menu .menuItem:hover { color: #ff4444; border-color: #cc0000; text-shadow: 0 0 15px #ff0000; background: rgba(200,0,0,0.1); }
 #menu .controls {
   color: #555; font-size: 11px; margin-top: 30px; text-align: center; line-height: 1.8;
 }
 #hud {
-  position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
-  background: linear-gradient(0deg, #111 0%, #222 100%);
-  border-top: 2px solid #0f0; display: none; z-index: 5;
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 64px;
+  background: linear-gradient(0deg, #2a2a2a 0%, #3a3a3a 40%, #2a2a2a 100%);
+  border-top: 3px solid #555; display: none; z-index: 5;
+  box-shadow: inset 0 2px 0 #4a4a4a, inset 0 -2px 0 #1a1a1a;
 }
 #hud .stat {
-  display: inline-block; padding: 10px 20px; color: #0f0;
-  font-size: 18px; text-shadow: 0 0 5px #0f0;
+  display: inline-block; padding: 8px 14px; color: #cc0000;
+  font-size: 22px; font-weight: bold;
+  text-shadow: 0 0 4px rgba(200,0,0,0.5);
 }
-#hud .stat .label { font-size: 10px; color: #484; }
+#hud .stat .label { font-size: 9px; color: #888; letter-spacing: 1px; }
 #crosshair {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   color: #0f0; font-size: 24px; z-index: 6; display: none;
@@ -62,13 +65,13 @@ body { background: #000; overflow: hidden; font-family: 'Courier New', monospace
   <div class="subtitle">~ A Chill Dystopian Shooter ~</div>
   <div class="host">Hosted on ice.gritboxops.com</div>
   <input id="nameInput" type="text" maxlength="20" placeholder="ENTER YOUR NAME"
-    style="background:#111;border:1px solid #0f0;color:#0f0;padding:8px 16px;font-family:inherit;
-    font-size:16px;text-align:center;margin-bottom:10px;outline:none;width:220px;">
+    style="background:#1a0a0a;border:1px solid #cc0000;color:#cc0000;padding:8px 16px;font-family:inherit;
+    font-size:16px;text-align:center;margin-bottom:10px;outline:none;width:220px;text-shadow:0 0 5px rgba(200,0,0,0.5);">
   <div class="menuItem" onclick="Game.start()">NEW GAME</div>
   <div class="menuItem" onclick="Game.continueGame()">CONTINUE</div>
   <div class="menuItem" onclick="Game.showLeaderboard()">LEADERBOARD</div>
   <div class="menuItem" onclick="Game.toggleMusic()">MUSIC: ON</div>
-  <div style="margin:15px 0;color:#4a4;font-size:11px;">Soundtrack: Breakdown Yoga</div>
+  <div style="margin:15px 0;color:#664444;font-size:11px;">Soundtrack: Breakdown Yoga</div>
   <div class="controls">
     WASD - Move &nbsp;|&nbsp; Mouse - Look &nbsp;|&nbsp; Click - Throw<br>
     F5 - Quick Save &nbsp;|&nbsp; F9 - Quick Load &nbsp;|&nbsp; ESC - Pause &nbsp;|&nbsp; SHIFT - Sprint
@@ -107,17 +110,20 @@ window.onSpotifyIframeApiReady = (IFrameAPI) => {
 <div id="damage"></div>
 <div id="hud">
   <div class="stat"><div class="label">STASH</div><span id="ammo">42</span></div>
-  <div class="stat"><div class="label">HEALTH</div><span id="health">100</span></div>
-  <div class="stat"><div class="label">SCORE</div><span id="score">0</span></div>
+  <div class="stat" style="border-left:2px solid #555;border-right:2px solid #555;"><div class="label">HEALTH</div><span id="health" style="color:#cc0000;">100</span>%</div>
+  <div class="stat" style="text-align:center;padding:4px 12px;">
+    <canvas id="doomFace" width="40" height="48" style="image-rendering:pixelated;"></canvas>
+  </div>
+  <div class="stat" style="border-left:2px solid #555;border-right:2px solid #555;"><div class="label">SCORE</div><span id="score">0</span></div>
   <div class="stat"><div class="label">WAVE</div><span id="wave">1</span></div>
   <div class="stat"><div class="label">KILLS</div><span id="kills">0</span></div>
-  <div class="stat" style="float:right;color:#4a4;"><div class="label">VIBES</div><span id="vibes">CHILL</span></div>
+  <div class="stat" style="float:right;color:#cc8800;"><div class="label">VIBES</div><span id="vibes">CHILL</span></div>
   <div class="stat" style="float:right;">
     <div class="label">MUSIC</div>
     <span id="muteBtn" onclick="Game.toggleMute()" style="cursor:pointer;">🔊</span>
     <input id="volSlider" type="range" min="0" max="100" value="70"
       oninput="Game.setVolume(this.value)"
-      style="width:60px;vertical-align:middle;accent-color:#0f0;cursor:pointer;">
+      style="width:60px;vertical-align:middle;accent-color:#cc0000;cursor:pointer;">
   </div>
 </div>
 <script src="game.js"></script>
