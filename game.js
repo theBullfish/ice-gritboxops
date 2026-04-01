@@ -1126,7 +1126,7 @@ function drawWeapon(throwAnim){
   let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
   let throwOff=throwAnim>0?-throwAnim*30:0;
   let pOff=0;
-  let bx=W*0.32+bob, by=H*0.65+pOff;
+  let bx=W*0.32+bob, by=H*0.78+pOff;
   // Smoke puff on fire
   if(throwAnim>0.3){
     let puffAlpha=throwAnim*0.6;
@@ -1377,20 +1377,19 @@ function drawProjectiles(strips){
   for(let p of projectiles){
     let dx=p.x-px,dy=p.y-py;
     let dist=Math.sqrt(dx*dx+dy*dy);
-    if(dist<0.1)continue;
+    // Only render once projectile is far enough away to be "in the scene"
+    // Close-range visual handled by joint muzzle smoke in drawWeapon
+    if(dist<1.5)continue;
     let angle=Math.atan2(dy,dx)-pa;
     while(angle<-Math.PI)angle+=Math.PI*2;
     while(angle>Math.PI)angle-=Math.PI*2;
     if(Math.abs(angle)>FOV)continue;
     let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
     let screenY=H*0.42;
-    let age=1-p.life/80;
-    let sz=Math.max(2,12/dist);
-    // Small round smoke puff - not big ugly squares
-    ctx.globalAlpha=Math.max(0.05,0.5-age*0.4);
+    let sz=Math.max(2,10/dist);
+    ctx.globalAlpha=0.5;
     ctx.fillStyle='rgba(180,190,170,0.7)';
     ctx.beginPath();ctx.arc(screenX,screenY,sz,0,Math.PI*2);ctx.fill();
-    // Tiny green core
     ctx.fillStyle='rgba(100,200,100,0.3)';
     ctx.beginPath();ctx.arc(screenX,screenY,sz*0.5,0,Math.PI*2);ctx.fill();
     ctx.globalAlpha=1;
