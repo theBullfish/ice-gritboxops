@@ -170,8 +170,8 @@ function loadLevel(idx){
   let lv=LEVELS[currentLevel];
   MAP=lv.map.slice();
   prisoners=[];freedCount=0;
-  // Spawn prisoners in Alcatraz cells (wall type 6)
-  if(currentLevel===4){
+  // Spawn prisoners near any type 6 (prison bar) walls
+  if(MAP.indexOf(6)>=0){
     for(let j=0;j<MAP_S;j++)for(let i=0;i<MAP_S;i++){
       // Put a prisoner next to each cell wall cluster
       if(MAP[j*MAP_S+i]===0){
@@ -191,11 +191,8 @@ function loadLevel(idx){
   }
 }
 function getLevelForWave(w){
-  if(w<=3)return 0;      // MSP Airport
-  if(w<=6)return 1;      // Airplane Graveyard
-  if(w<=9)return 2;      // Lolita Express
-  if(w<=12)return 3;     // Epstein Island
-  return 4;              // Immigrant Alcatraz (13+)
+  let idx=Math.floor((w-1)/2);
+  return Math.min(idx,LEVELS.length-1);
 }
 function mapAt(x,y){return(x>=0&&x<MAP_S&&y>=0&&y<MAP_S)?MAP[y*MAP_S+x]:3;}
 // ─── EFFECTS ─────────────────────────────────────
@@ -1131,7 +1128,8 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 canvas.addEventListener('click',()=>{
   if(!running)return;
-  canvas.requestPointerLock();fireProjectile();
+  if(!isMobile)canvas.requestPointerLock();
+  fireProjectile();
 });
 document.addEventListener('mousemove',e=>{
   if(document.pointerLockElement===canvas){pa+=e.movementX*0.003;pitch=Math.max(-H/3,Math.min(H/3,pitch-e.movementY*0.8));}
