@@ -1381,9 +1381,11 @@ function drawProjectiles(strips){
     if(dist<0.1)continue;
     let sx=(-dx*Math.sin(pa)+dy*Math.cos(pa))/dist;
     let screenX=W/2+sx*W;
-    let screenY=H*0.42;
     let sz=Math.max(3,24/dist);
     let age=1-p.life/80; // 0=new, 1=old
+    // Lerp from joint tip (near) to horizon (far) as projectile travels
+    let jointY=H*0.68, horizonY=H*0.42;
+    let screenY=jointY+(horizonY-jointY)*Math.min(1,age*3);
     // Smoke puff - grows and fades as it travels
     let puffSz=sz*(1+age*1.5);
     ctx.globalAlpha=Math.max(0.1,0.7-age*0.5);
