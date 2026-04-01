@@ -1377,13 +1377,17 @@ function updateHUD(){
 function drawProjectiles(strips){
   for(let p of projectiles){
     let dx=p.x-px,dy=p.y-py;
-    let dist=dx*Math.cos(pa)+dy*Math.sin(pa);
+    let dist=Math.sqrt(dx*dx+dy*dy);
     if(dist<0.1)continue;
-    let sx=(-dx*Math.sin(pa)+dy*Math.cos(pa))/dist;
-    let screenX=W/2+sx*W;
+    // Use same projection as enemies
+    let angle=Math.atan2(dy,dx)-pa;
+    while(angle<-Math.PI)angle+=Math.PI*2;
+    while(angle>Math.PI)angle-=Math.PI*2;
+    if(Math.abs(angle)>FOV)continue;
+    let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
     let sz=Math.max(3,24/dist);
     let age=1-p.life/80; // 0=new, 1=old
-    // Lerp from joint tip (near) to horizon (far) as projectile travels
+    // Lerp Y from joint tip (near) to horizon (far)
     let jointY=H*0.68, horizonY=H*0.42;
     let screenY=jointY+(horizonY-jointY)*Math.min(1,age*3);
     // Smoke puff - grows and fades as it travels
