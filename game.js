@@ -260,7 +260,7 @@ function drawMinimap(){
   ctx.globalAlpha=1;
 }
 // Player state
-let px=2.5,py=2.5,pa=0,pitch=0,hp=100,ammo=42,score=0,wave=1,running=false,paused=false;
+let px=2.5,py=2.5,pa=0,hp=100,ammo=42,score=0,wave=1,running=false,paused=false;
 let keys={};let musicOn=true;
 // Enemies
 let enemies=[];let projectiles=[];let msgTimer=0;let msgText='';
@@ -322,7 +322,7 @@ function castRays(){
 }
 // Draw DOOM-style ceiling and floor - per-level
 function drawBackground(){
-  let horizon=H/2+pitch;
+  let horizon=H/2;
   let lv=LEVELS[currentLevel];
   // ceiling
   let grd=ctx.createLinearGradient(0,0,0,horizon);
@@ -345,7 +345,7 @@ function drawWalls(strips){
   for(let i=0;i<strips.length;i++){
     let s=strips[i];
     let lineH=Math.min(H*2,(H/s.dist)|0);
-    let drawStart=(H-lineH)/2+pitch;
+    let drawStart=(H-lineH)/2;
     let lv=LEVELS[currentLevel];
     let c=(lv.wc[s.hit])||lv.wc[3]||{l:'#555',d:'#333'};
     // DOOM-style distance shading - aggressive falloff into darkness
@@ -436,7 +436,7 @@ function drawEnemySprite(e,screenX,screenH,dist){
   let shade=Math.max(0.15,1-dist/8);
   let t=ENEMY_TYPES[e.type];
   let w=screenH*0.6*t.size,h=screenH*t.size;
-  let x=screenX-w/2,y=H/2+pitch-h/2;
+  let x=screenX-w/2,y=H/2-h/2;
   ctx.globalAlpha=shade;
   // wobble if hit
   if(e.hits>=1)x+=Math.sin(Date.now()/100)*e.hits*3;
@@ -744,7 +744,7 @@ function drawEnemySprite(e,screenX,screenH,dist){
 function drawWeapon(throwAnim){
   let bob=running?Math.sin(Date.now()/80)*5:Math.sin(Date.now()/200)*2;
   let throwOff=throwAnim>0?-throwAnim*40:0;
-  let pOff=pitch*0.3;
+  let pOff=0;
   let bx=W*0.42+bob, by=H*0.52+pOff;
   // Muzzle flash on fire
   if(throwAnim>0.5){
@@ -892,7 +892,7 @@ function updateEnemies(dt){
     let newLvl=getLevelForWave(wave);
     if(newLvl!==currentLevel){
       loadLevel(newLvl);
-      px=2.5;py=2.5;pa=0;pitch=0;
+      px=2.5;py=2.5;pa=0;
       // Level transition flash
       setTimeout(()=>{screenShake=12;addParticles(W/2,H/2,'#fff',30);},500);
     }
@@ -965,7 +965,7 @@ function drawProjectiles(strips){
     if(dist<0.1)continue;
     let sx=(-dx*Math.sin(pa)+dy*Math.cos(pa))/dist;
     let screenX=W/2+sx*W;
-    let screenY=H/2+pitch;
+    let screenY=H/2;
     let sz=Math.max(2,20/dist);
     ctx.fillStyle='#2d8c2d';
     ctx.beginPath();ctx.arc(screenX,screenY,sz,0,Math.PI*2);ctx.fill();
@@ -984,7 +984,7 @@ function drawPrisoners(){
     let screenH=Math.min(H*2,(H/dist)|0);
     let shade=Math.max(0.15,1-dist/8);
     let w=screenH*0.4,h=screenH*0.8;
-    let x=screenX-w/2,y=H/2+pitch-h/2;
+    let x=screenX-w/2,y=H/2-h/2;
     ctx.globalAlpha=shade;
     if(pr.freed){
       // Running away - green tint, smaller
@@ -1095,25 +1095,31 @@ function initMobile(){
       if(t.identifier===stickTouchId){stickTouchId=null;touchMoveX=0;touchMoveY=0;drawStick(0,0);}
     }
   });
-  // Look zone - swipe to look
+  // Right side - swipe to look, tap to fire
   let lookZone=document.getElementById('lookZone');
-  let lastLookX=0,lastLookY=0;
+  let lastLookX=0,lookMoved=false;
   lookZone.addEventListener('touchstart',e=>{
     e.preventDefault();lookTouchId=e.changedTouches[0].identifier;
-    lastLookX=e.changedTouches[0].clientX;lastLookY=e.changedTouches[0].clientY;
+    lastLookX=e.changedTouches[0].clientX;lookMoved=false;
   },{passive:false});
   lookZone.addEventListener('touchmove',e=>{
     e.preventDefault();
     for(let t of e.changedTouches){
       if(t.identifier===lookTouchId){
-        touchLookDX=(t.clientX-lastLookX)*0.005;
-        touchLookDY=(t.clientY-lastLookY)*0.8;
-        lastLookX=t.clientX;lastLookY=t.clientY;
+        let dx=t.clientX-lastLookX;
+        if(Math.abs(dx)>3)lookMoved=true;
+        touchLookDX=dx*0.005;
+        lastLookX=t.clientX;
       }
     }
   },{passive:false});
   lookZone.addEventListener('touchend',e=>{
-    for(let t of e.changedTouches){if(t.identifier===lookTouchId){lookTouchId=null;touchLookDX=0;touchLookDY=0;}}
+    for(let t of e.changedTouches){
+      if(t.identifier===lookTouchId){
+        lookTouchId=null;touchLookDX=0;
+        if(!lookMoved&&running)fireProjectile();
+      }
+    }
   });
   // Fire button
   rb.addEventListener('touchstart',e=>{e.preventDefault();if(running)fireProjectile();},{passive:false});
@@ -1132,7 +1138,7 @@ canvas.addEventListener('click',()=>{
   fireProjectile();
 });
 document.addEventListener('mousemove',e=>{
-  if(document.pointerLockElement===canvas){pa+=e.movementX*0.003;pitch=Math.max(-H/3,Math.min(H/3,pitch-e.movementY*0.8));}
+  if(document.pointerLockElement===canvas){pa+=e.movementX*0.003;}
 });
 // Game loop
 let lastTime=0;
@@ -1151,7 +1157,7 @@ function gameLoop(ts){
     if(keys['d']||touchMoveX>0.2){nx+=Math.cos(pa+Math.PI/2)*spd;ny+=Math.sin(pa+Math.PI/2)*spd;}
     // touch look
     if(touchLookDX){pa+=touchLookDX;touchLookDX=0;}
-    if(touchLookDY){pitch=Math.max(-H/3,Math.min(H/3,pitch-touchLookDY));touchLookDY=0;}
+    if(touchLookDY){touchLookDY=0;}
     if(mapAt(nx|0,py|0)===0)px=nx;
     if(mapAt(px|0,ny|0)===0)py=ny;
     updateProjectiles();
@@ -1248,7 +1254,7 @@ const Game={
   start(){
     let nameIn=document.getElementById('nameInput');
     playerName=nameIn?nameIn.value.trim()||'ANON':'ANON';
-    px=2.5;py=2.5;pa=0;pitch=0;hp=100;ammo=42;score=0;wave=1;kills=0;
+    px=2.5;py=2.5;pa=0;hp=100;ammo=42;score=0;wave=1;kills=0;
     enemies=[];projectiles=[];running=true;paused=false;
     loadLevel(0);
     document.getElementById('menu').style.display='none';
