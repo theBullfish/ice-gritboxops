@@ -1127,7 +1127,7 @@ function drawWeapon(throwAnim){
   let bob=running?Math.sin(Date.now()/80)*5:Math.sin(Date.now()/200)*2;
   let throwOff=throwAnim>0?-throwAnim*40:0;
   let pOff=0;
-  let bx=W*0.42+bob, by=H*0.52+pOff;
+  let bx=W*0.42+bob, by=H*0.62+pOff;
   // Muzzle flash on fire
   if(throwAnim>0.5){
     ctx.fillStyle='rgba(0,255,0,0.4)';
@@ -1547,7 +1547,24 @@ function initMobile(){
     }
   });
   // Fire button
-  rb.addEventListener('touchstart',e=>{e.preventDefault();if(running)fireProjectile();},{passive:false});
+  // Fire button also supports swipe-to-look + tap-to-fire
+  let rbLastX=0,rbMoved=false;
+  rb.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    rbLastX=e.changedTouches[0].clientX;rbMoved=false;
+  },{passive:false});
+  rb.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    let t=e.changedTouches[0];
+    let dx=t.clientX-rbLastX;
+    if(Math.abs(dx)>2)rbMoved=true;
+    touchLookDX=dx*0.005;
+    rbLastX=t.clientX;
+  },{passive:false});
+  rb.addEventListener('touchend',e=>{
+    e.preventDefault();touchLookDX=0;
+    if(running)fireProjectile(); // always fire on release
+  },{passive:false});
 }
 // Input
 document.addEventListener('keydown',e=>{
