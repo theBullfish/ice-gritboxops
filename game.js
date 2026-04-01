@@ -1685,6 +1685,7 @@ const Game={
     document.getElementById('menu').style.display='none';
     document.getElementById('hud').style.display='block';
     document.getElementById('crosshair').style.display='block';
+    if(isMobile){let ch=document.getElementById('crosshair');ch.style.top=canvas.getBoundingClientRect().top+canvas.height/2+'px';}
     if(!isMobile)canvas.requestPointerLock();
     initMobile();
     if(musicOn)startMusic();
@@ -1700,6 +1701,7 @@ const Game={
       document.getElementById('menu').style.display='none';
       document.getElementById('hud').style.display='block';
       document.getElementById('crosshair').style.display='block';
+      if(isMobile){let ch=document.getElementById('crosshair');ch.style.top=canvas.getBoundingClientRect().top+canvas.height/2+'px';}
       if(!isMobile)canvas.requestPointerLock();
       initMobile();
       if(musicOn)startMusic();
