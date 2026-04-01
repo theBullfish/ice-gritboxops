@@ -648,12 +648,16 @@ function drawWalls(strips){
     let drawStart=(H-lineH)/2;
     let lv=LEVELS[currentLevel];
     let c=(lv.wc[s.hit])||lv.wc[3]||{l:'#555',d:'#333'};
-    // DOOM-style distance shading - aggressive falloff into darkness
+    // Base wall color - always fully opaque (DOOM walls are never transparent)
     let shade=Math.max(0.08,1-s.dist/8);
-    // Base wall color
+    ctx.globalAlpha=1;
     ctx.fillStyle=s.side?c.d:c.l;
-    ctx.globalAlpha=shade;
     ctx.fillRect(i,drawStart,1,lineH);
+    // Distance darkening overlay - darken walls without making them transparent
+    if(shade<1){
+      ctx.fillStyle='rgba(0,0,0,'+(1-shade)+')';
+      ctx.fillRect(i,drawStart,1,lineH);
+    }
     // Procedural texture overlay - DOOM-style brick/panel patterns
     let texStep=lineH/64; // normalize texture to 64 texels tall
     if(s.hit===1){
