@@ -1375,17 +1375,18 @@ function updateHUD(){
 }
 // Draw projectiles as smoke puffs
 function drawProjectiles(strips){
-  // Hand position on screen
-  let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
-  let handX=W*0.32+bob+35, handY=H*0.65+80;
-  // Crosshair position
-  let aimX=W/2, aimY=H*0.42;
   for(let p of projectiles){
-    let age=1-p.life/80; // 0=new, 1=old
-    // Straight line from hand to crosshair and beyond
-    let screenX=handX+(aimX-handX)*age*2;
-    let screenY=handY+(aimY-handY)*age*2;
-    let sz=Math.max(3,8+age*20);
+    let dx=p.x-px,dy=p.y-py;
+    let dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<0.1)continue;
+    let angle=Math.atan2(dy,dx)-pa;
+    while(angle<-Math.PI)angle+=Math.PI*2;
+    while(angle>Math.PI)angle-=Math.PI*2;
+    if(Math.abs(angle)>FOV)continue;
+    let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
+    let screenY=H*0.42;
+    let age=1-p.life/80;
+    let sz=Math.max(3,24/dist);
     // Smoke puff - grows and fades as it travels
     let puffSz=sz*(1+age*1.5);
     ctx.globalAlpha=Math.max(0.1,0.7-age*0.5);
