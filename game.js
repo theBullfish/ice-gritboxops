@@ -1122,6 +1122,32 @@ function drawWeapon(throwAnim){
   // Top rail
   ctx.fillStyle='#333';
   ctx.fillRect(bx+20,by-3+throwOff,100,6);
+  // ── MARIJUANA LEAF DECAL on back of gun ──
+  let lx=bx+14,ly=by+10+throwOff;
+  // Center stem
+  ctx.fillStyle='#1a6b1a';
+  ctx.fillRect(lx+7,ly+4,2,14);
+  // Center blade (tallest)
+  ctx.fillStyle='#22aa22';
+  ctx.fillRect(lx+6,ly,4,8);
+  ctx.fillRect(lx+5,ly+1,6,5);
+  // Left blade
+  ctx.fillRect(lx+1,ly+3,5,3);
+  ctx.fillRect(lx,ly+4,3,2);
+  // Right blade
+  ctx.fillRect(lx+10,ly+3,5,3);
+  ctx.fillRect(lx+13,ly+4,3,2);
+  // Lower left blade
+  ctx.fillRect(lx+2,ly+8,4,3);
+  ctx.fillRect(lx+1,ly+9,3,2);
+  // Lower right blade
+  ctx.fillRect(lx+10,ly+8,4,3);
+  ctx.fillRect(lx+12,ly+9,3,2);
+  // Leaf vein highlights
+  ctx.fillStyle='#33cc33';
+  ctx.fillRect(lx+7,ly+2,2,3);
+  ctx.fillRect(lx+3,ly+4,2,1);
+  ctx.fillRect(lx+11,ly+4,2,1);
   // Side grip details
   ctx.fillStyle='#222';
   ctx.fillRect(bx+10,by+40+throwOff,80,8);
