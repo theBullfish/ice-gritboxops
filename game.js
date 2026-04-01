@@ -1096,16 +1096,15 @@ function drawEnemySprite(e,screenX,screenH,dist){
     ctx.fillRect(x+w*0.33,eyeY,w*0.1,h*0.04);
     ctx.fillRect(x+w*0.57,eyeY,w*0.1,h*0.04);
   }
-  // Green haze cloud when passive (sitting down baked)
+  // Green haze when passive (baked) - subtle wisps, not a big rectangle
   if(e.passive){
-    ctx.fillStyle='rgba(0,180,0,0.2)';
-    ctx.fillRect(x-w*0.1,y+h*0.1,w*1.2,h*0.6);
-    ctx.fillStyle='rgba(50,255,50,0.15)';
-    ctx.fillRect(x+w*0.1,y-h*0.05,w*0.3,h*0.2);
-    ctx.fillRect(x+w*0.5,y+h*0.0,w*0.25,h*0.15);
-    // Sitting sprite compress - squish them down
-    ctx.fillStyle='rgba(0,100,0,0.25)';
-    ctx.fillRect(x+w*0.1,y+h*0.7,w*0.8,h*0.25);
+    let t=Date.now()/500;
+    // Small drifting smoke wisps around the head
+    ctx.fillStyle='rgba(50,200,50,0.12)';
+    ctx.beginPath();ctx.arc(x+w*0.3+Math.sin(t)*w*0.1,y+h*0.1+Math.cos(t*1.3)*h*0.05,w*0.12,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+w*0.7+Math.sin(t*0.8)*w*0.1,y+h*0.05+Math.cos(t*1.1)*h*0.04,w*0.1,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(30,150,30,0.08)';
+    ctx.beginPath();ctx.arc(x+w*0.5+Math.sin(t*0.6)*w*0.15,y-h*0.02+Math.cos(t*0.9)*h*0.03,w*0.15,0,Math.PI*2);ctx.fill();
   }
   // Yell text
   if(e.yelling>0){
@@ -1386,19 +1385,14 @@ function drawProjectiles(strips){
     let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
     let screenY=H*0.42;
     let age=1-p.life/80;
-    let sz=Math.max(3,24/dist);
-    // Smoke puff - grows and fades as it travels
-    let puffSz=sz*(1+age*1.5);
-    ctx.globalAlpha=Math.max(0.1,0.7-age*0.5);
-    // Outer smoke cloud
-    ctx.fillStyle='rgba(160,170,160,0.6)';
-    ctx.fillRect(screenX-puffSz,screenY-puffSz,puffSz*2,puffSz*2);
-    // Inner lighter core
-    ctx.fillStyle='rgba(200,210,200,0.4)';
-    ctx.fillRect(screenX-puffSz*0.6,screenY-puffSz*0.6,puffSz*1.2,puffSz*1.2);
-    // Green tinge (it's weed smoke)
-    ctx.fillStyle='rgba(80,180,80,0.15)';
-    ctx.fillRect(screenX-puffSz*0.4,screenY-puffSz*0.4,puffSz*0.8,puffSz*0.8);
+    let sz=Math.max(2,12/dist);
+    // Small round smoke puff - not big ugly squares
+    ctx.globalAlpha=Math.max(0.05,0.5-age*0.4);
+    ctx.fillStyle='rgba(180,190,170,0.7)';
+    ctx.beginPath();ctx.arc(screenX,screenY,sz,0,Math.PI*2);ctx.fill();
+    // Tiny green core
+    ctx.fillStyle='rgba(100,200,100,0.3)';
+    ctx.beginPath();ctx.arc(screenX,screenY,sz*0.5,0,Math.PI*2);ctx.fill();
     ctx.globalAlpha=1;
   }
 }
