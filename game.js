@@ -566,10 +566,10 @@ let keys={};let musicOn=true;
 let enemies=[];let projectiles=[];let msgTimer=0;let msgText='';
 const HIGH_QUOTES=["hehe...","duuude...","got any snacks?","wait what was I doing?","is that a taco?","I love everyone","*giggles*","bro...the colors..."];
 const ENEMY_TYPES={
-  ice:{name:'ICE Agent',color:'#1a1a2e',accent:'#0044aa',badge:'ICE',yell:'I.C.E.!',hp:4,speed:1.2,size:1},
-  sheriff:{name:'Sheriff Deputy',color:'#8B6914',accent:'#CD853F',badge:'STAR',yell:'FREEZE!',hp:4,speed:1.0,size:1},
-  bovino:{name:'BOVINO',color:'#5C3317',accent:'#8B4513',badge:'BULL',yell:'MOOOO!',hp:20,speed:1.8,size:2},
-  birdleg:{name:'Bird-Legged Ho',color:'#AA336A',accent:'#FF69B4',badge:'BIRD',yell:'SQUAWK!',hp:20,speed:2.2,size:1.5}
+  ice:{name:'ICE Agent',color:'#1a1a2e',accent:'#0044aa',badge:'ICE',yell:'I.C.E.!',hp:2,speed:1.2,size:1},
+  sheriff:{name:'Sheriff Deputy',color:'#8B6914',accent:'#CD853F',badge:'STAR',yell:'FREEZE!',hp:2,speed:1.0,size:1},
+  bovino:{name:'BOVINO',color:'#5C3317',accent:'#8B4513',badge:'BULL',yell:'MOOOO!',hp:8,speed:1.8,size:2},
+  birdleg:{name:'Bird-Legged Ho',color:'#AA336A',accent:'#FF69B4',badge:'BIRD',yell:'SQUAWK!',hp:8,speed:2.2,size:1.5}
 };
 function spawnEnemy(type,x,y){
   let t=ENEMY_TYPES[type];
@@ -620,13 +620,13 @@ function castRays(){
     if(side===0)wallX=py+dist*Math.cos(ra-pa)*sin_a; else wallX=px+dist*Math.cos(ra-pa)*cos_a;
     wallX-=Math.floor(wallX); // fractional part = position within tile
     dist*=Math.cos(ra-pa); // fisheye fix
-    strips.push({dist:Math.max(dist,0.1),hit,side,texU:wallX});
+    strips.push({dist:hit?Math.max(dist,0.1):100,hit,side,texU:wallX});
   }
   return strips;
 }
 // DOOM-style floor/ceiling with per-row raycasted checkerboard
 function drawBackground(){
-  let horizon=H/2;
+  let horizon=H*0.42; // raised POV - player stands taller
   let lv=LEVELS[currentLevel];
   // Parse base colors for floor/ceil tinting
   let ceilDark=lv.ceil[0]||'#080808';
@@ -700,7 +700,7 @@ function drawWalls(strips){
   for(let i=0;i<strips.length;i++){
     let s=strips[i];
     let lineH=Math.min(H*2,(H/s.dist)|0);
-    let drawStart=(H-lineH)/2;
+    let drawStart=H*0.42-lineH/2;
     let c=(lv.wc[s.hit])||lv.wc[3]||{l:'#555',d:'#333'};
     // Parse base wall color into RGB for per-texel shading
     let baseHex=s.side?c.d:c.l;
@@ -818,7 +818,7 @@ function drawEnemySprite(e,screenX,screenH,dist){
   let shade=Math.max(0.15,1-dist/8);
   let t=ENEMY_TYPES[e.type];
   let w=screenH*0.6*t.size,h=screenH*t.size;
-  let x=screenX-w/2,y=H/2-h/2;
+  let x=screenX-w/2,y=H*0.42-h/2;
   ctx.globalAlpha=shade;
   // wobble if hit
   if(e.hits>=1)x+=Math.sin(Date.now()/100)*e.hits*3;
@@ -1124,108 +1124,116 @@ function drawEnemySprite(e,screenX,screenH,dist){
 }
 // Draw DOOM-style weapon - THE GREEN CANNON (BFG equivalent)
 function drawWeapon(throwAnim){
-  let bob=running?Math.sin(Date.now()/80)*5:Math.sin(Date.now()/200)*2;
-  let throwOff=throwAnim>0?-throwAnim*40:0;
+  let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
+  let throwOff=throwAnim>0?-throwAnim*30:0;
   let pOff=0;
-  let bx=W*0.42+bob, by=H*0.62+pOff;
-  // Muzzle flash on fire
-  if(throwAnim>0.5){
-    ctx.fillStyle='rgba(0,255,0,0.4)';
-    ctx.fillRect(bx+40,by-60+throwOff,60,40);
-    ctx.fillStyle='rgba(100,255,100,0.6)';
-    ctx.fillRect(bx+55,by-50+throwOff,30,20);
+  let bx=W*0.38+bob, by=H*0.65+pOff;
+  // Smoke puff on fire
+  if(throwAnim>0.3){
+    let puffAlpha=throwAnim*0.6;
+    let puffSize=20+throwAnim*30;
+    // Multiple smoke puffs drifting up
+    ctx.fillStyle='rgba(180,180,180,'+puffAlpha*0.5+')';
+    ctx.fillRect(bx+130,by-30+throwOff-puffSize*0.5,puffSize*0.8,puffSize*0.6);
+    ctx.fillStyle='rgba(160,160,160,'+puffAlpha*0.3+')';
+    ctx.fillRect(bx+120,by-50+throwOff-puffSize,puffSize,puffSize*0.8);
+    ctx.fillStyle='rgba(140,140,140,'+puffAlpha*0.2+')';
+    ctx.fillRect(bx+135,by-70+throwOff-puffSize*1.2,puffSize*0.6,puffSize*0.5);
+    // Cherry glow at tip
+    ctx.fillStyle='rgba(255,100,0,'+puffAlpha+')';
+    ctx.fillRect(bx+135,by+6+throwOff,12,12);
+    ctx.fillStyle='rgba(255,200,50,'+puffAlpha*0.8+')';
+    ctx.fillRect(bx+138,by+8+throwOff,6,8);
   }
-  // Weapon body - big chunky cannon
-  ctx.fillStyle='#2a2a2a';
-  ctx.fillRect(bx+10,by+throwOff,120,45); // main barrel housing
-  ctx.fillStyle='#1a1a1a';
-  ctx.fillRect(bx+15,by+5+throwOff,110,35); // inner barrel
-  // Barrel bore
-  ctx.fillStyle='#0a0a0a';
-  ctx.fillRect(bx+120,by+12+throwOff,15,20);
-  // Green energy core (the weed chamber)
-  ctx.fillStyle='#1a5c1a';
-  ctx.fillRect(bx+30,by+8+throwOff,50,28);
-  // Glowing green chamber
-  let glow=0.4+Math.sin(Date.now()/200)*0.2;
-  ctx.fillStyle='rgba(0,200,0,'+glow+')';
-  ctx.fillRect(bx+35,by+12+throwOff,40,20);
-  // Chamber details - leaf matter visible
-  ctx.fillStyle='#2d8c2d';
-  ctx.fillRect(bx+40,by+15+throwOff,8,6);
-  ctx.fillRect(bx+52,by+18+throwOff,10,5);
-  ctx.fillRect(bx+45,by+22+throwOff,7,5);
-  // Barrel rings
-  ctx.fillStyle='#3a3a3a';
-  ctx.fillRect(bx+85,by+2+throwOff,5,40);
-  ctx.fillRect(bx+100,by+2+throwOff,5,40);
-  ctx.fillRect(bx+115,by+2+throwOff,5,40);
-  // Top rail
-  ctx.fillStyle='#333';
-  ctx.fillRect(bx+20,by-3+throwOff,100,6);
-  // ── MARIJUANA LEAF DECAL on back of gun ──
-  let lx=bx+14,ly=by+10+throwOff;
-  // Center stem
-  ctx.fillStyle='#1a6b1a';
-  ctx.fillRect(lx+7,ly+4,2,14);
-  // Center blade (tallest)
-  ctx.fillStyle='#22aa22';
-  ctx.fillRect(lx+6,ly,4,8);
-  ctx.fillRect(lx+5,ly+1,6,5);
-  // Left blade
-  ctx.fillRect(lx+1,ly+3,5,3);
-  ctx.fillRect(lx,ly+4,3,2);
-  // Right blade
-  ctx.fillRect(lx+10,ly+3,5,3);
-  ctx.fillRect(lx+13,ly+4,3,2);
-  // Lower left blade
-  ctx.fillRect(lx+2,ly+8,4,3);
-  ctx.fillRect(lx+1,ly+9,3,2);
-  // Lower right blade
-  ctx.fillRect(lx+10,ly+8,4,3);
-  ctx.fillRect(lx+12,ly+9,3,2);
-  // Leaf vein highlights
-  ctx.fillStyle='#33cc33';
-  ctx.fillRect(lx+7,ly+2,2,3);
-  ctx.fillRect(lx+3,ly+4,2,1);
-  ctx.fillRect(lx+11,ly+4,2,1);
-  // Side grip details
-  ctx.fillStyle='#222';
-  ctx.fillRect(bx+10,by+40+throwOff,80,8);
-  // Grip handle
-  ctx.fillStyle='#3a2a1a';
-  ctx.fillRect(bx+45,by+45+throwOff,30,50);
-  ctx.fillStyle='#2a1a0a';
-  ctx.fillRect(bx+48,by+48+throwOff,24,44);
-  // Grip texture lines
-  ctx.fillStyle='#4a3a2a';
-  for(let gy=0;gy<6;gy++){ctx.fillRect(bx+48,by+52+gy*7+throwOff,24,2);}
-  // Hand on grip
+  // ── THE BIG JOINT ──
+  // Joint body - long rolled paper cylinder, angled up slightly
+  // Paper wrapper - off-white with texture
+  ctx.fillStyle='#e8dcc8';
+  ctx.fillRect(bx+20,by+4+throwOff,120,18); // main joint body
+  ctx.fillStyle='#ddd0b8';
+  ctx.fillRect(bx+20,by+6+throwOff,120,14); // slightly darker center
+  // Paper texture lines (spiral wrap)
+  ctx.fillStyle='rgba(180,160,130,0.3)';
+  for(let j=0;j<12;j++){ctx.fillRect(bx+25+j*10,by+4+throwOff,1,18);}
+  // Twist at the lit end
+  ctx.fillStyle='#d4c4a8';
+  ctx.fillRect(bx+138,by+6+throwOff,8,14);
+  ctx.fillRect(bx+144,by+8+throwOff,5,10);
+  // Cherry/ember at tip - glowing orange
+  let cherryPulse=0.7+Math.sin(Date.now()/150)*0.3;
+  ctx.fillStyle='rgb('+(200+cherryPulse*55|0)+','+(80+cherryPulse*40|0)+',20)';
+  ctx.fillRect(bx+135,by+5+throwOff,14,16);
+  // Inner ember glow
+  ctx.fillStyle='rgb(255,'+(180+cherryPulse*75|0)+','+(50+cherryPulse*50|0)+')';
+  ctx.fillRect(bx+137,by+8+throwOff,8,10);
+  // Ash at the very tip
+  ctx.fillStyle='#555';
+  ctx.fillRect(bx+148,by+8+throwOff,4,10);
+  ctx.fillStyle='#888';
+  ctx.fillRect(bx+148,by+10+throwOff,3,6);
+  // Idle smoke wisps from cherry (always)
+  let smokeT=Date.now()/300;
+  ctx.fillStyle='rgba(180,180,180,0.15)';
+  ctx.fillRect(bx+140+Math.sin(smokeT)*5,by-5+throwOff+Math.sin(smokeT*1.3)*3,6,8);
+  ctx.fillStyle='rgba(160,160,160,0.1)';
+  ctx.fillRect(bx+138+Math.sin(smokeT*0.7)*8,by-18+throwOff+Math.sin(smokeT*1.7)*4,8,10);
+  // Filter/crutch at mouth end
+  ctx.fillStyle='#c8a860';
+  ctx.fillRect(bx+5,by+5+throwOff,18,16);
+  // Filter texture - cardboard spiral
+  ctx.fillStyle='#b89848';
+  ctx.fillRect(bx+7,by+7+throwOff,14,12);
+  ctx.fillStyle='#c8a860';
+  for(let j=0;j<4;j++){ctx.fillRect(bx+8+j*3,by+7+throwOff,1,12);}
+  // Green visible through paper (weed inside)
+  ctx.fillStyle='rgba(40,120,40,0.2)';
+  ctx.fillRect(bx+40,by+7+throwOff,60,12);
+  // Little green bits showing through
+  ctx.fillStyle='#3a8a3a';
+  ctx.fillRect(bx+50,by+9+throwOff,4,3);
+  ctx.fillRect(bx+65,by+11+throwOff,5,3);
+  ctx.fillRect(bx+80,by+8+throwOff,3,4);
+  ctx.fillRect(bx+95,by+10+throwOff,4,3);
+  // ── MARIJUANA LEAF burned/printed on the paper ──
+  let lx=bx+55,ly=by+3+throwOff;
+  ctx.fillStyle='rgba(40,100,40,0.25)';
+  ctx.fillRect(lx+4,ly+3,2,8); // stem
+  ctx.fillRect(lx+3,ly,4,5); // center blade
+  ctx.fillRect(lx,ly+2,3,2); // left
+  ctx.fillRect(lx+7,ly+2,3,2); // right
+  ctx.fillRect(lx+1,ly+5,3,2); // lower left
+  ctx.fillRect(lx+6,ly+5,3,2); // lower right
+  // Hand holding the joint
   ctx.fillStyle='#c4956a';
-  ctx.fillRect(bx+42,by+52+throwOff,38,25);
-  // Fingers wrapping
+  ctx.fillRect(bx+8,by+18+throwOff,40,30); // palm
+  // Fingers pinching the filter
   ctx.fillStyle='#b8855a';
-  ctx.fillRect(bx+42,by+56+throwOff,6,18);
-  ctx.fillRect(bx+50,by+58+throwOff,6,16);
-  ctx.fillRect(bx+58,by+56+throwOff,6,18);
-  ctx.fillRect(bx+66,by+54+throwOff,6,16);
+  ctx.fillRect(bx+2,by+8+throwOff,10,14); // thumb on top
+  ctx.fillRect(bx+4,by+20+throwOff,8,18); // index below
+  ctx.fillRect(bx+14,by+22+throwOff,8,16); // middle finger
+  // Fingertips
+  ctx.fillStyle='#c4956a';
+  ctx.fillRect(bx+2,by+6+throwOff,8,4); // thumb tip
   // Wrist/arm
   ctx.fillStyle='#c4956a';
-  ctx.fillRect(bx+35,by+75+throwOff,50,80);
+  ctx.fillRect(bx+10,by+46+throwOff,45,70);
   // Sleeve
   ctx.fillStyle='#444';
-  ctx.fillRect(bx+30,by+100+throwOff,60,60);
-  // Ammo counter on weapon (LED style)
-  ctx.fillStyle='#001100';
-  ctx.fillRect(bx+60,by+3+throwOff,22,12);
+  ctx.fillRect(bx+5,by+80+throwOff,55,80);
+  // Ammo counter - small green text near bottom
   ctx.fillStyle='#00ff00';
   ctx.font='bold 9px monospace';
-  ctx.fillText(ammo<10?'0'+ammo:''+ammo,bx+63,by+12+throwOff);
+  ctx.fillText(ammo<10?'0'+ammo:''+ammo,bx+48,by+16+throwOff);
 }
-// Projectiles
+// Projectiles - smoke puffs from the joint
+let lastFireTime=0,fireCooldown=400; // 400ms between shots - stoned pace
 function fireProjectile(){
-  if(ammo<=0)return;ammo--;
-  projectiles.push({x:px,y:py,dx:Math.cos(pa)*0.15,dy:Math.sin(pa)*0.15,life:60});
+  if(ammo<=0)return;
+  let now=Date.now();
+  if(now-lastFireTime<fireCooldown)return;
+  lastFireTime=now;
+  ammo--;
+  projectiles.push({x:px,y:py,dx:Math.cos(pa)*0.12,dy:Math.sin(pa)*0.12,life:80});
   throwAnim=1;
 }
 let throwAnim=0;
@@ -1365,7 +1373,7 @@ function updateHUD(){
   if(ln)ln.innerText=LEVELS[currentLevel].name;
   drawDoomFace();
 }
-// Draw projectiles as green dots
+// Draw projectiles as smoke puffs
 function drawProjectiles(strips){
   for(let p of projectiles){
     let dx=p.x-px,dy=p.y-py;
@@ -1373,10 +1381,22 @@ function drawProjectiles(strips){
     if(dist<0.1)continue;
     let sx=(-dx*Math.sin(pa)+dy*Math.cos(pa))/dist;
     let screenX=W/2+sx*W;
-    let screenY=H/2;
-    let sz=Math.max(2,20/dist);
-    ctx.fillStyle='#2d8c2d';
-    ctx.beginPath();ctx.arc(screenX,screenY,sz,0,Math.PI*2);ctx.fill();
+    let screenY=H*0.42;
+    let sz=Math.max(3,24/dist);
+    let age=1-p.life/80; // 0=new, 1=old
+    // Smoke puff - grows and fades as it travels
+    let puffSz=sz*(1+age*1.5);
+    ctx.globalAlpha=Math.max(0.1,0.7-age*0.5);
+    // Outer smoke cloud
+    ctx.fillStyle='rgba(160,170,160,0.6)';
+    ctx.fillRect(screenX-puffSz,screenY-puffSz,puffSz*2,puffSz*2);
+    // Inner lighter core
+    ctx.fillStyle='rgba(200,210,200,0.4)';
+    ctx.fillRect(screenX-puffSz*0.6,screenY-puffSz*0.6,puffSz*1.2,puffSz*1.2);
+    // Green tinge (it's weed smoke)
+    ctx.fillStyle='rgba(80,180,80,0.15)';
+    ctx.fillRect(screenX-puffSz*0.4,screenY-puffSz*0.4,puffSz*0.8,puffSz*0.8);
+    ctx.globalAlpha=1;
   }
 }
 // Draw prisoners (Alcatraz level)
@@ -1392,7 +1412,19 @@ function drawPrisoners(){
     let screenH=Math.min(H*2,(H/dist)|0);
     let shade=Math.max(0.15,1-dist/8);
     let w=screenH*0.4,h=screenH*0.8;
-    let x=screenX-w/2,y=H/2-h/2;
+    let x=screenX-w/2,y=H*0.42-h/2;
+    // Z-buffer visibility check
+    let x0=Math.max(0,(screenX-w/2)|0),x1=Math.min(W-1,(screenX+w/2)|0);
+    let visible=false;
+    for(let col=x0;col<=x1;col++){if(dist<zBuf[col]){visible=true;break;}}
+    if(!visible)continue;
+    ctx.save();ctx.beginPath();
+    let runStart=-1;
+    for(let col=x0;col<=x1+1;col++){
+      if(col<=x1&&dist<zBuf[col]){if(runStart<0)runStart=col;}
+      else{if(runStart>=0){ctx.rect(runStart,0,col-runStart,H);runStart=-1;}}
+    }
+    ctx.clip();
     ctx.globalAlpha=shade;
     if(pr.freed){
       // Running away - green tint, smaller
@@ -1423,13 +1455,16 @@ function drawPrisoners(){
       ctx.fillText('HELP',x+w*0.1,y);
     }
     ctx.globalAlpha=1;
+    ctx.restore();
   }
 }
 // Sort & draw enemies
+// Z-buffer shared between enemy and prisoner drawing
+let zBuf=new Float32Array(640);
+function buildZBuffer(strips){
+  for(let i=0;i<W;i++)zBuf[i]=i<strips.length?strips[i].dist:100;
+}
 function drawEnemies(strips){
-  // Build z-buffer from wall strips for sprite clipping
-  let zBuf=new Float32Array(W);
-  for(let i=0;i<strips.length&&i<W;i++)zBuf[i]=strips[i].dist;
   let sorted=enemies.map(e=>{
     let dx=e.x-px,dy=e.y-py;
     return{e,dist:Math.sqrt(dx*dx+dy*dy)};
@@ -1442,18 +1477,25 @@ function drawEnemies(strips){
     if(Math.abs(angle)>FOV)continue;
     let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
     let screenH=Math.min(H*2,(H/dist)|0);
-    // Clip sprite behind walls using z-buffer
+    // Quick visibility check against z-buffer
     let t=ENEMY_TYPES[e.type];
     let sw=screenH*0.6*t.size;
     let x0=Math.max(0,(screenX-sw/2)|0), x1=Math.min(W-1,(screenX+sw/2)|0);
-    // Check if any column of the sprite is visible (in front of wall)
     let visible=false;
     for(let col=x0;col<=x1;col++){if(dist<zBuf[col]){visible=true;break;}}
     if(!visible)continue;
-    // Use clipping region for columns where sprite is in front of wall
+    // Render sprite with per-column z-buffer clipping via canvas clip
     ctx.save();
     ctx.beginPath();
-    for(let col=x0;col<=x1;col++){if(dist<zBuf[col])ctx.rect(col,0,1,H);}
+    // Batch adjacent visible columns into wider rects for performance
+    let runStart=-1;
+    for(let col=x0;col<=x1+1;col++){
+      if(col<=x1&&dist<zBuf[col]){
+        if(runStart<0)runStart=col;
+      } else {
+        if(runStart>=0){ctx.rect(runStart,0,col-runStart,H);runStart=-1;}
+      }
+    }
     ctx.clip();
     drawEnemySprite(e,screenX,screenH,dist);
     ctx.restore();
@@ -1500,7 +1542,7 @@ function initMobile(){
   rc.fillStyle='rgba(0,255,0,0.15)';
   rc.beginPath();rc.arc(45,45,38,0,Math.PI*2);rc.fill();
   rc.fillStyle='#0f0';rc.font='11px monospace';rc.textAlign='center';
-  rc.fillText('THROW',45,48);
+  rc.fillText('TOKE',45,48);
   // Left stick touch
   ls.addEventListener('touchstart',e=>{e.preventDefault();stickTouchId=e.changedTouches[0].identifier;},{passive:false});
   ls.addEventListener('touchmove',e=>{
@@ -1611,6 +1653,7 @@ function gameLoop(ts){
   drawBackground();
   let strips=castRays();
   drawWalls(strips);
+  buildZBuffer(strips);
   drawPrisoners();
   drawEnemies(strips);
   drawProjectiles(strips);
