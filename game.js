@@ -615,8 +615,12 @@ function castRays(){
       let m=mapAt(mapX,mapY);
       if(m>0){hit=m;dist=side===0?(mapX-px+(1-stepX)/2)/cos_a:(mapY-py+(1-stepY)/2)/sin_a;break;}
     }
+    // Calculate wall texture U coordinate (0-1 across the wall face)
+    let wallX;
+    if(side===0)wallX=py+dist*Math.cos(ra-pa)*sin_a; else wallX=px+dist*Math.cos(ra-pa)*cos_a;
+    wallX-=Math.floor(wallX); // fractional part = position within tile
     dist*=Math.cos(ra-pa); // fisheye fix
-    strips.push({dist:Math.max(dist,0.1),hit,side});
+    strips.push({dist:Math.max(dist,0.1),hit,side,texU:wallX});
   }
   return strips;
 }
@@ -690,99 +694,123 @@ function drawBackground(){
     for(let i=0;i<lv.lights.count;i++){ctx.fillRect(W*0.15+i*W*(0.7/lv.lights.count),2,W*0.06,Math.min(6,horizon*0.03));}
   }
 }
-// Draw DOOM-style textured walls
+// DOOM-style textured walls with proper UV mapping
 function drawWalls(strips){
+  let lv=LEVELS[currentLevel];
   for(let i=0;i<strips.length;i++){
     let s=strips[i];
     let lineH=Math.min(H*2,(H/s.dist)|0);
     let drawStart=(H-lineH)/2;
-    let lv=LEVELS[currentLevel];
     let c=(lv.wc[s.hit])||lv.wc[3]||{l:'#555',d:'#333'};
-    // Base wall color - always fully opaque (DOOM walls are never transparent)
+    // Parse base wall color into RGB for per-texel shading
+    let baseHex=s.side?c.d:c.l;
+    let br=parseInt(baseHex.slice(1,3),16),bg=parseInt(baseHex.slice(3,5),16),bb=parseInt(baseHex.slice(5,7),16);
+    // Distance shading
     let shade=Math.max(0.08,1-s.dist/8);
+    shade=Math.min(1,shade*1.1); // slight boost so close walls pop
     ctx.globalAlpha=1;
-    ctx.fillStyle=s.side?c.d:c.l;
-    ctx.fillRect(i,drawStart,1,lineH);
-    // Distance darkening overlay - darken walls without making them transparent
-    if(shade<1){
-      ctx.fillStyle='rgba(0,0,0,'+(1-shade)+')';
-      ctx.fillRect(i,drawStart,1,lineH);
-    }
-    // Procedural texture overlay - DOOM-style brick/panel patterns
-    let texStep=lineH/64; // normalize texture to 64 texels tall
-    if(s.hit===1){
-      // Glass security walls - dark with wire mesh pattern
-      ctx.fillStyle='rgba(40,80,100,0.3)';
-      for(let ty=0;ty<64;ty+=8){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep));}
-      // wire cross pattern
-      if((i%6)<1){ctx.fillStyle='rgba(100,160,180,0.15)';ctx.fillRect(i,drawStart,1,lineH);}
-      // top/bottom frame
-      ctx.fillStyle='rgba(60,100,120,0.25)';
-      ctx.fillRect(i,drawStart,1,Math.max(2,texStep*2));
-      ctx.fillRect(i,drawStart+lineH-Math.max(2,texStep*2),1,Math.max(2,texStep*2));
-    } else if(s.hit===2){
-      // Concrete pillars - heavy industrial look, mortar lines
-      // Horizontal mortar every 8 texels
-      ctx.fillStyle='rgba(0,0,0,0.2)';
-      for(let ty=0;ty<64;ty+=8){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep*0.5));}
-      // Vertical mortar offset per row (brick pattern)
-      let brickRow=((drawStart|0)+i*7)%16;
-      if(brickRow<1){ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(i,drawStart,1,lineH);}
-      // Grime at base
-      ctx.fillStyle='rgba(20,15,10,0.2)';
-      ctx.fillRect(i,drawStart+lineH*0.8,1,lineH*0.2);
-    } else if(s.hit===3){
-      // Terminal walls - DOOM-style tech panels with rivets
-      // Panel border lines every 16 texels
-      ctx.fillStyle='rgba(0,0,0,0.25)';
-      for(let ty=0;ty<64;ty+=16){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep*0.8));}
-      // Vertical panel divisions
-      if(i%24<1){ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(i,drawStart,1,lineH);}
-      // Panel highlight (top edge catch light)
-      if(i%24===1){ctx.fillStyle='rgba(140,110,70,0.12)';ctx.fillRect(i,drawStart,1,lineH);}
-      // Random grime splotches
-      if((i*31+drawStart*7)%47<3){ctx.fillStyle='rgba(10,8,5,0.15)';ctx.fillRect(i,drawStart+lineH*0.5,1,lineH*0.3);}
-    } else if(s.hit===4){
-      // Check-in counters - dark metal with riveted seams
-      ctx.fillStyle='rgba(60,80,100,0.15)';
-      for(let ty=0;ty<64;ty+=4){let yy=drawStart+ty*texStep;ctx.fillRect(i,yy,1,Math.max(1,texStep*0.3));}
-      // Top edge highlight
-      ctx.fillStyle='rgba(80,100,120,0.2)';
-      ctx.fillRect(i,drawStart,1,Math.max(2,texStep));
-      // Rivet dots
-      if(i%8===0){ctx.fillStyle='rgba(100,120,140,0.2)';
-        for(let ty=4;ty<60;ty+=12){ctx.fillRect(i,drawStart+ty*texStep,1,Math.max(1,texStep*0.8));}}
-    } else if(s.hit===5){
-      // Gate desks - computer terminal look
-      // Screen-like glow area in center
-      if(i%20>4&&i%20<16){
-        ctx.fillStyle='rgba(0,40,20,0.15)';ctx.fillRect(i,drawStart+lineH*0.2,1,lineH*0.4);
-        // scan line on "screen"
-        let scanY=drawStart+lineH*0.2+((Date.now()/50+i)%((lineH*0.4)|1));
-        ctx.fillStyle='rgba(0,80,40,0.1)';ctx.fillRect(i,scanY,1,2);
+    // Texture U from raycaster (0-1 position across wall face)
+    let texU=s.texU||0;
+    let texX=(texU*64)|0; // 64-texel wide texture
+    let texStep=64/lineH; // texels per screen pixel
+    // Render wall column with per-texel procedural texture
+    let yStart=Math.max(0,drawStart|0);
+    let yEnd=Math.min(H,(drawStart+lineH)|0);
+    // For performance: render in 2px tall chunks
+    for(let y=yStart;y<yEnd;y+=2){
+      let texY=(((y-drawStart)*texStep)|0)&63; // 0-63 texel Y
+      // Procedural texture lookup based on wall type
+      let tr=br,tg=bg,tb=bb;
+      if(s.hit===1){
+        // Brick wall - classic DOOM STARTAN-style
+        let brickH=8,brickW=16;
+        let bRow=(texY/brickH)|0;
+        let bOffX=bRow&1?brickW/2:0;
+        let inBrickX=((texX+bOffX)%brickW);
+        let inBrickY=texY%brickH;
+        // Mortar lines (dark gaps between bricks)
+        if(inBrickX<1||inBrickY<1){
+          tr=(br*0.5)|0;tg=(bg*0.5)|0;tb=(bb*0.5)|0;
+        } else {
+          // Slight color variation per brick
+          let brickId=((texX+bOffX)/brickW|0)*7+bRow*13;
+          let vary=((brickId*31)%20-10)/100;
+          tr=Math.min(255,(br*(1+vary))|0);tg=Math.min(255,(bg*(1+vary))|0);tb=Math.min(255,(bb*(1+vary))|0);
+        }
+      } else if(s.hit===2){
+        // Stone/concrete - rough surface noise
+        let noise=((texX*17+texY*31)%19-9)/60;
+        tr=Math.min(255,(br*(1+noise))|0);tg=Math.min(255,(bg*(1+noise))|0);tb=Math.min(255,(bb*(1+noise))|0);
+        // Horizontal mortar every 8 texels
+        if(texY%8<1){tr=(br*0.4)|0;tg=(bg*0.4)|0;tb=(bb*0.4)|0;}
+        // Cracks
+        if(((texX*7+texY*3)%53)<1){tr=(br*0.3)|0;tg=(bg*0.3)|0;tb=(bb*0.3)|0;}
+      } else if(s.hit===3){
+        // Tech panel - DOOM COMPTALL style
+        let panelW=32,panelH=32;
+        let px2=texX%panelW,py2=texY%panelH;
+        // Panel border
+        if(px2<1||px2>panelW-2||py2<1||py2>panelH-2){
+          tr=(br*0.4)|0;tg=(bg*0.4)|0;tb=(bb*0.4)|0;
+        } else if(px2<3||px2>panelW-4||py2<3||py2>panelH-4){
+          // Inner bevel highlight/shadow
+          tr=Math.min(255,(br*1.3)|0);tg=Math.min(255,(bg*1.3)|0);tb=Math.min(255,(bb*1.3)|0);
+        }
+        // Rivet dots in corners
+        if((px2<5&&py2<5)||(px2>panelW-6&&py2<5)||(px2<5&&py2>panelH-6)||(px2>panelW-6&&py2>panelH-6)){
+          tr=Math.min(255,(br*1.5)|0);tg=Math.min(255,(bg*1.5)|0);tb=Math.min(255,(bb*1.5)|0);
+        }
+      } else if(s.hit===4){
+        // Metal plate - horizontal ridges
+        let ridgeH=4;
+        let inRidge=texY%ridgeH;
+        if(inRidge<1){
+          tr=Math.min(255,(br*1.4)|0);tg=Math.min(255,(bg*1.4)|0);tb=Math.min(255,(bb*1.4)|0);
+        } else if(inRidge>ridgeH-2){
+          tr=(br*0.6)|0;tg=(bg*0.6)|0;tb=(bb*0.6)|0;
+        }
+        // Vertical seam every 32 texels
+        if(texX%32<1){tr=(br*0.3)|0;tg=(bg*0.3)|0;tb=(bb*0.3)|0;}
+      } else if(s.hit===5){
+        // Computer terminal / screen wall
+        let px2=texX%32,py2=texY%64;
+        if(py2>12&&py2<50&&px2>4&&px2<28){
+          // Screen area - green tinted
+          tr=0;tg=Math.min(255,(40+((texY*3+texX*7)%20))|0);tb=(10)|0;
+          // Scan line effect
+          if(texY%3<1){tg=(tg*1.5)|0;}
+        } else {
+          // Frame
+          let noise=((texX*13+texY*7)%11-5)/80;
+          tr=(br*(0.7+noise))|0;tg=(bg*(0.7+noise))|0;tb=(bb*(0.7+noise))|0;
+        }
+      } else if(s.hit===6){
+        // Prison bars
+        let barSpacing=8;
+        let inBar=texX%barSpacing;
+        if(inBar<3){
+          // Metal bar
+          let barShade=1+(inBar-1)*0.15;
+          tr=Math.min(255,(90*barShade)|0);tg=Math.min(255,(90*barShade)|0);tb=Math.min(255,(95*barShade)|0);
+          // Horizontal crossbars
+          if(texY>18&&texY<22||texY>42&&texY<46){
+            tr=Math.min(255,(100)|0);tg=100;tb=105;
+          }
+        } else {
+          // Gap between bars - see through to dark
+          tr=5;tg=5;tb=8;
+        }
       }
-      // Frame
-      ctx.fillStyle='rgba(0,0,0,0.2)';
-      ctx.fillRect(i,drawStart,1,Math.max(1,texStep));
-      ctx.fillRect(i,drawStart+lineH-Math.max(1,texStep),1,Math.max(1,texStep));
-    } else if(s.hit===6){
-      // Prison cell bars - vertical bars with gaps
-      if(i%4<2){
-        ctx.fillStyle='rgba(80,80,80,0.4)';ctx.fillRect(i,drawStart,1,lineH);
-      } else {
-        ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(i,drawStart,1,lineH);
-      }
-      // Horizontal crossbar
-      ctx.fillStyle='rgba(100,100,100,0.3)';
-      ctx.fillRect(i,drawStart+lineH*0.3,1,Math.max(2,texStep*2));
-      ctx.fillRect(i,drawStart+lineH*0.7,1,Math.max(2,texStep*2));
+      // Apply distance shading
+      tr=(tr*shade)|0;tg=(tg*shade)|0;tb=(tb*shade)|0;
+      ctx.fillStyle='rgb('+tr+','+tg+','+tb+')';
+      ctx.fillRect(i,y,1,2);
     }
-    // Distance fog - fade to black
-    if(s.dist>3){
-      ctx.fillStyle='rgba(0,0,0,'+(Math.min(0.7,(s.dist-3)/10))+')';
-      ctx.fillRect(i,drawStart,1,lineH);
+    // Distance fog overlay for far walls
+    if(s.dist>5){
+      ctx.fillStyle='rgba(0,0,0,'+(Math.min(0.6,(s.dist-5)/8))+')';
+      ctx.fillRect(i,yStart,1,yEnd-yStart);
     }
-    ctx.globalAlpha=1;
   }
 }
 // Draw DOOM-style chunky pixel sprites
