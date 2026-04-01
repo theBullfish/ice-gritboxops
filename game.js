@@ -620,23 +620,60 @@ function castRays(){
   }
   return strips;
 }
-// Draw DOOM-style ceiling and floor - per-level
+// Draw DOOM-style ceiling and floor with tile pattern
 function drawBackground(){
   let horizon=H/2;
   let lv=LEVELS[currentLevel];
-  // ceiling
+  // ceiling gradient base
   let grd=ctx.createLinearGradient(0,0,0,horizon);
   for(let i=0;i<lv.ceil.length;i++)grd.addColorStop(i/(lv.ceil.length-1),lv.ceil[i]);
   ctx.fillStyle=grd;ctx.fillRect(0,0,W,horizon);
+  // ceiling tile grid - perspective lines fading into distance
+  let ceilBase=lv.ceil[lv.ceil.length-1]||'#0a0a0a';
+  for(let row=0;row<horizon;row+=3){
+    let depth=(horizon-row)/horizon; // 0=horizon, 1=top
+    let alpha=depth*0.12;
+    if(alpha<0.01)continue;
+    // horizontal tile lines
+    if(row%12<2){
+      ctx.fillStyle='rgba(255,255,255,'+alpha+')';
+      ctx.fillRect(0,row,W,1);
+    }
+    // vertical tile lines (perspective-scaled)
+    let tileW=Math.max(8,32*depth);
+    let offset=(px*20*depth)%tileW;
+    ctx.fillStyle='rgba(255,255,255,'+(alpha*0.6)+')';
+    for(let vx=-offset;vx<W;vx+=tileW){
+      ctx.fillRect(vx|0,row,1,3);
+    }
+  }
   // lights
   if(lv.lights.count>0){
     ctx.fillStyle=lv.lights.color;
     for(let i=0;i<lv.lights.count;i++){ctx.fillRect(W*0.15+i*W*(0.7/lv.lights.count),2,W*0.06,Math.min(6,horizon*0.03));}
   }
-  // floor
+  // floor gradient base
   let grd2=ctx.createLinearGradient(0,horizon,0,H);
   for(let i=0;i<lv.floor.length;i++)grd2.addColorStop(i/(lv.floor.length-1),lv.floor[i]);
   ctx.fillStyle=grd2;ctx.fillRect(0,horizon,W,H-horizon);
+  // floor tile grid - DOOM-style perspective checkerboard
+  for(let row=horizon;row<H;row+=3){
+    let depth=(row-horizon)/(H-horizon); // 0=horizon, 1=bottom
+    let alpha=depth*0.15;
+    if(alpha<0.01)continue;
+    // horizontal tile lines
+    if((row-horizon)%14<2){
+      ctx.fillStyle='rgba(255,255,255,'+alpha+')';
+      ctx.fillRect(0,row,W,1);
+    }
+    // vertical tile lines (perspective-scaled)
+    let tileW=Math.max(8,36*depth);
+    let offset=(px*20*depth)%tileW;
+    ctx.fillStyle='rgba(255,255,255,'+(alpha*0.5)+')';
+    for(let vx=-offset;vx<W;vx+=tileW){
+      ctx.fillRect(vx|0,row,1,3);
+    }
+  }
   ctx.fillStyle='rgba(180,140,80,0.04)';
   ctx.fillRect(0,horizon,W,1);
 }
@@ -1323,6 +1360,9 @@ function drawPrisoners(){
 }
 // Sort & draw enemies
 function drawEnemies(strips){
+  // Build z-buffer from wall strips for sprite clipping
+  let zBuf=new Float32Array(W);
+  for(let i=0;i<strips.length&&i<W;i++)zBuf[i]=strips[i].dist;
   let sorted=enemies.map(e=>{
     let dx=e.x-px,dy=e.y-py;
     return{e,dist:Math.sqrt(dx*dx+dy*dy)};
@@ -1335,7 +1375,21 @@ function drawEnemies(strips){
     if(Math.abs(angle)>FOV)continue;
     let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
     let screenH=Math.min(H*2,(H/dist)|0);
+    // Clip sprite behind walls using z-buffer
+    let t=ENEMY_TYPES[e.type];
+    let sw=screenH*0.6*t.size;
+    let x0=Math.max(0,(screenX-sw/2)|0), x1=Math.min(W-1,(screenX+sw/2)|0);
+    // Check if any column of the sprite is visible (in front of wall)
+    let visible=false;
+    for(let col=x0;col<=x1;col++){if(dist<zBuf[col]){visible=true;break;}}
+    if(!visible)continue;
+    // Use clipping region for columns where sprite is in front of wall
+    ctx.save();
+    ctx.beginPath();
+    for(let col=x0;col<=x1;col++){if(dist<zBuf[col])ctx.rect(col,0,1,H);}
+    ctx.clip();
     drawEnemySprite(e,screenX,screenH,dist);
+    ctx.restore();
   }
 }
 // Audio - Breakdown Yoga via Spotify IFrame API
