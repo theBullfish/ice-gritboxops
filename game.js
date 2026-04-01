@@ -620,62 +620,75 @@ function castRays(){
   }
   return strips;
 }
-// Draw DOOM-style ceiling and floor with tile pattern
+// DOOM-style floor/ceiling with per-row raycasted checkerboard
 function drawBackground(){
   let horizon=H/2;
   let lv=LEVELS[currentLevel];
-  // ceiling gradient base
-  let grd=ctx.createLinearGradient(0,0,0,horizon);
-  for(let i=0;i<lv.ceil.length;i++)grd.addColorStop(i/(lv.ceil.length-1),lv.ceil[i]);
-  ctx.fillStyle=grd;ctx.fillRect(0,0,W,horizon);
-  // ceiling tile grid - perspective lines fading into distance
-  let ceilBase=lv.ceil[lv.ceil.length-1]||'#0a0a0a';
-  for(let row=0;row<horizon;row+=3){
-    let depth=(horizon-row)/horizon; // 0=horizon, 1=top
-    let alpha=depth*0.12;
-    if(alpha<0.01)continue;
-    // horizontal tile lines
-    if(row%12<2){
-      ctx.fillStyle='rgba(255,255,255,'+alpha+')';
-      ctx.fillRect(0,row,W,1);
+  // Parse base colors for floor/ceil tinting
+  let ceilDark=lv.ceil[0]||'#080808';
+  let floorDark=lv.floor[0]||'#0a0a0a';
+  // Fill base black first
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  // Ray directions for leftmost and rightmost columns
+  let rdLx=Math.cos(pa-HALF_FOV),rdLy=Math.sin(pa-HALF_FOV);
+  let rdRx=Math.cos(pa+HALF_FOV),rdRy=Math.sin(pa+HALF_FOV);
+  // Floor and ceiling: cast per row, render in 2px-tall strips for performance
+  let step=2;
+  for(let y=0;y<H;y+=step){
+    let isFloor=y>horizon;
+    let rowDist;
+    if(isFloor){
+      rowDist=horizon/(y-horizon+0.1);
+    } else {
+      rowDist=horizon/(horizon-y+0.1);
     }
-    // vertical tile lines (perspective-scaled)
-    let tileW=Math.max(8,32*depth);
-    let offset=(px*20*depth)%tileW;
-    ctx.fillStyle='rgba(255,255,255,'+(alpha*0.6)+')';
-    for(let vx=-offset;vx<W;vx+=tileW){
-      ctx.fillRect(vx|0,row,1,3);
+    // World-space position at left and right edges of this row
+    let floorStepX=(rowDist*(rdRx-rdLx))/W;
+    let floorStepY=(rowDist*(rdRy-rdLy))/W;
+    let floorX=px+rowDist*rdLx;
+    let floorY=py+rowDist*rdLy;
+    // Distance-based shading (darker = farther, like DOOM light diminishing)
+    let shade=Math.min(1,1.2/(rowDist+0.5));
+    shade=shade*shade; // quadratic falloff for moodier look
+    if(shade<0.02){
+      // Too dark to see, skip for performance
+      continue;
+    }
+    // Render this row in tile-width chunks
+    let chunkW=4; // 4px wide chunks for performance
+    for(let x=0;x<W;x+=chunkW){
+      // World position at this pixel
+      let wx=floorX+floorStepX*x;
+      let wy=floorY+floorStepY*x;
+      // Checkerboard: tile coords (each tile = 1 world unit)
+      let tx=(wx|0)-(wx<0?1:0);
+      let ty=(wy|0)-(wy<0?1:0);
+      let checker=(tx+ty)&1;
+      // Color based on checker + floor/ceil + shade
+      let r,g,b;
+      if(isFloor){
+        // Parse floor dark color for tinting
+        if(checker){
+          r=(shade*35)|0;g=(shade*30)|0;b=(shade*25)|0;
+        } else {
+          r=(shade*25)|0;g=(shade*22)|0;b=(shade*18)|0;
+        }
+      } else {
+        if(checker){
+          r=(shade*28)|0;g=(shade*28)|0;b=(shade*32)|0;
+        } else {
+          r=(shade*18)|0;g=(shade*18)|0;b=(shade*22)|0;
+        }
+      }
+      ctx.fillStyle='rgb('+r+','+g+','+b+')';
+      ctx.fillRect(x,y,chunkW,step);
     }
   }
-  // lights
+  // Lights on ceiling
   if(lv.lights.count>0){
     ctx.fillStyle=lv.lights.color;
     for(let i=0;i<lv.lights.count;i++){ctx.fillRect(W*0.15+i*W*(0.7/lv.lights.count),2,W*0.06,Math.min(6,horizon*0.03));}
   }
-  // floor gradient base
-  let grd2=ctx.createLinearGradient(0,horizon,0,H);
-  for(let i=0;i<lv.floor.length;i++)grd2.addColorStop(i/(lv.floor.length-1),lv.floor[i]);
-  ctx.fillStyle=grd2;ctx.fillRect(0,horizon,W,H-horizon);
-  // floor tile grid - DOOM-style perspective checkerboard
-  for(let row=horizon;row<H;row+=3){
-    let depth=(row-horizon)/(H-horizon); // 0=horizon, 1=bottom
-    let alpha=depth*0.15;
-    if(alpha<0.01)continue;
-    // horizontal tile lines
-    if((row-horizon)%14<2){
-      ctx.fillStyle='rgba(255,255,255,'+alpha+')';
-      ctx.fillRect(0,row,W,1);
-    }
-    // vertical tile lines (perspective-scaled)
-    let tileW=Math.max(8,36*depth);
-    let offset=(px*20*depth)%tileW;
-    ctx.fillStyle='rgba(255,255,255,'+(alpha*0.5)+')';
-    for(let vx=-offset;vx<W;vx+=tileW){
-      ctx.fillRect(vx|0,row,1,3);
-    }
-  }
-  ctx.fillStyle='rgba(180,140,80,0.04)';
-  ctx.fillRect(0,horizon,W,1);
 }
 // Draw DOOM-style textured walls
 function drawWalls(strips){
