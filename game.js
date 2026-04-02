@@ -626,7 +626,7 @@ function castRays(){
 }
 // DOOM-style floor/ceiling with per-row raycasted checkerboard
 function drawBackground(){
-  let horizon=H*0.42; // raised POV - player stands taller
+  let horizon=H*0.35; // raised POV - player stands taller
   let lv=LEVELS[currentLevel];
   // Parse base colors for floor/ceil tinting
   let ceilDark=lv.ceil[0]||'#080808';
@@ -700,7 +700,7 @@ function drawWalls(strips){
   for(let i=0;i<strips.length;i++){
     let s=strips[i];
     let lineH=Math.min(H*2,(H/s.dist)|0);
-    let drawStart=H*0.42-lineH/2;
+    let drawStart=H*0.35-lineH/2;
     let c=(lv.wc[s.hit])||lv.wc[3]||{l:'#555',d:'#333'};
     // Parse base wall color into RGB for per-texel shading
     let baseHex=s.side?c.d:c.l;
@@ -818,7 +818,7 @@ function drawEnemySprite(e,screenX,screenH,dist){
   let shade=Math.max(0.15,1-dist/8);
   let t=ENEMY_TYPES[e.type];
   let w=screenH*0.6*t.size,h=screenH*t.size;
-  let x=screenX-w/2,y=H*0.42-h/2;
+  let x=screenX-w/2,y=H*0.35-h/2;
   ctx.globalAlpha=shade;
   // wobble if hit
   if(e.hits>=1)x+=Math.sin(Date.now()/100)*e.hits*3;
@@ -1302,7 +1302,7 @@ function updateEnemies(dt){
   // clean defeated & check wave
   let active=enemies.filter(e=>!e.passive);
   if(active.length===0&&enemies.length>0){
-    wave++;ammo+=10+wave*2;enemies=[];
+    wave++;ammo+=20+wave*3;enemies=[];
     // Check level transition
     let newLvl=getLevelForWave(wave);
     if(newLvl!==currentLevel){
@@ -1380,7 +1380,7 @@ function drawProjectiles(strips){
   let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
   let jx=W*0.32+bob+148, jy=H*0.78+10;
   // Crosshair
-  let cx=W/2, cy=H*0.42;
+  let cx=W/2, cy=H*0.35;
   // Draw smoke trail from joint to crosshair
   let steps=5;
   for(let i=0;i<steps;i++){
@@ -1411,7 +1411,7 @@ function drawPrisoners(){
     let screenH=Math.min(H*2,(H/dist)|0);
     let shade=Math.max(0.15,1-dist/8);
     let w=screenH*0.4,h=screenH*0.8;
-    let x=screenX-w/2,y=H*0.42-h/2;
+    let x=screenX-w/2,y=H*0.35-h/2;
     // Z-buffer visibility check
     let x0=Math.max(0,(screenX-w/2)|0),x1=Math.min(W-1,(screenX+w/2)|0);
     let visible=false;
