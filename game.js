@@ -469,7 +469,7 @@ function loadLevel(idx){
   currentLevel=idx%LEVELS.length;
   let lv=LEVELS[currentLevel];
   MAP=lv.map.slice();
-  prisoners=[];freedCount=0;
+  prisoners=[];freedCount=0;weedCrates=[];
   // Spawn prisoners near any type 6 (prison bar) walls
   if(MAP.indexOf(6)>=0){
     for(let j=0;j<MAP_S;j++)for(let i=0;i<MAP_S;i++){
@@ -552,6 +552,11 @@ function drawMinimap(){
   ctx.strokeStyle='#0f0';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(ox+px*ms,oy+py*ms);
   ctx.lineTo(ox+px*ms+Math.cos(pa)*6,oy+py*ms+Math.sin(pa)*6);ctx.stroke();
+  // crate dots
+  for(let c of weedCrates){
+    ctx.fillStyle='#0a0';
+    ctx.fillRect(ox+(c.x*ms)|0,oy+(c.y*ms)|0,2,2);
+  }
   // enemy dots
   for(let e of enemies){
     ctx.fillStyle=e.passive?'#440':'#f00';
@@ -564,6 +569,7 @@ let px=2.5,py=2.5,pa=0,hp=100,ammo=42,score=0,wave=1,running=false,paused=false;
 let keys={};let musicOn=true;
 // Enemies
 let enemies=[];let projectiles=[];let msgTimer=0;let msgText='';
+let weedCrates=[];
 const HIGH_QUOTES=["hehe...","duuude...","got any snacks?","wait what was I doing?","is that a taco?","I love everyone","*giggles*","bro...the colors..."];
 const ENEMY_TYPES={
   ice:{name:'ICE Agent',color:'#1a1a2e',accent:'#0044aa',badge:'ICE',yell:'I.C.E.!',hp:2,speed:1.2,size:1},
@@ -592,6 +598,36 @@ function spawnWave(){
     spawnEnemy('birdleg',spots[si][0],spots[si][1]);si++;
     showMsg('BOSS WAVE!\nBOVINO & BIRD-LEGGED HO APPEAR!');
   } else showMsg('WAVE '+wave);
+  // Spawn weed crates each wave
+  spawnWeedCrates();
+}
+function spawnWeedCrates(){
+  // Find open floor spots away from player
+  let spots=[];
+  for(let i=0;i<MAP_S;i++)for(let j=0;j<MAP_S;j++){
+    if(MAP[j*MAP_S+i]===0){let dx=i+0.5-px,dy=j+0.5-py;if(dx*dx+dy*dy>4)spots.push([i+0.5,j+0.5]);}
+  }
+  for(let i=spots.length-1;i>0;i--){let j=Math.random()*i|0;[spots[i],spots[j]]=[spots[j],spots[i]];}
+  let count=Math.min(5+wave,spots.length,15);
+  for(let i=0;i<count;i++){
+    // Don't place on top of existing crates
+    let sx=spots[i][0],sy=spots[i][1];
+    if(!weedCrates.some(c=>Math.abs(c.x-sx)<1&&Math.abs(c.y-sy)<1)){
+      weedCrates.push({x:sx,y:sy,ammo:5+Math.floor(Math.random()*6)});
+    }
+  }
+}
+function checkCratePickup(){
+  for(let i=weedCrates.length-1;i>=0;i--){
+    let c=weedCrates[i];
+    let dx=px-c.x,dy=py-c.y;
+    if(dx*dx+dy*dy<0.6){
+      ammo+=c.ammo;
+      addScorePopup(W/2,H/2-20,'+'+c.ammo+' WEED','#0f0');
+      addParticles(W/2,H/2,'#0a0',8);
+      weedCrates.splice(i,1);
+    }
+  }
 }
 function showMsg(t){msgText=t;msgTimer=180;document.getElementById('message').style.display='block';document.getElementById('message').innerText=t;}
 // Raycaster
@@ -1238,24 +1274,34 @@ function fireProjectile(){
 let throwAnim=0;
 function updateProjectiles(){
   for(let i=projectiles.length-1;i>=0;i--){
-    let p=projectiles[i];p.x+=p.dx;p.y+=p.dy;p.life--;
-    if(p.life<=0||mapAt(p.x|0,p.y|0)>0){projectiles.splice(i,1);continue;}
-    for(let j=enemies.length-1;j>=0;j--){
-      let e=enemies[j];if(e.passive)continue;
-      let dx=p.x-e.x,dy=p.y-e.y;
-      if(dx*dx+dy*dy<0.3*e.size){
-        e.hits++;e.hp--;
-        e.yelling=60;e.yellText=e.hits>=3?'*cough*':'Ugh!';
-        if(e.hits>=1)e.speed=ENEMY_TYPES[e.type].speed*Math.max(0.1,1-e.hits*0.25);
-        if(e.hits>=3)e.speed=0.1;
-        if(e.hits>=4||e.hp<=0){e.passive=true;e.speed=0;kills++;let pts=e.type==='bovino'||e.type==='birdleg'?500:100;score+=pts;
-          addScorePopup(W/2,H/2-40,'+'+pts,pts>=500?'#f0f':'#ff0');
-          addParticles(W/2,H/2,e.type==='bovino'?'#8B4513':e.type==='birdleg'?'#FF69B4':'#0f0',15);
-          screenShake=8;
-        } else {addParticles(W/2,H/2,'#0f0',5);screenShake=3;}
-        projectiles.splice(i,1);break;
+    let p=projectiles[i];
+    // Swept collision - check multiple substeps so fast projectiles don't skip enemies
+    let steps=4;
+    let sdx=p.dx/steps,sdy=p.dy/steps;
+    let hit=false;
+    for(let s=0;s<steps;s++){
+      p.x+=sdx;p.y+=sdy;
+      if(mapAt(p.x|0,p.y|0)>0){projectiles.splice(i,1);hit=true;break;}
+      for(let j=enemies.length-1;j>=0;j--){
+        let e=enemies[j];if(e.passive)continue;
+        let dx=p.x-e.x,dy=p.y-e.y;
+        let hitR=0.5*e.size; // generous hit radius
+        if(dx*dx+dy*dy<hitR*hitR){
+          e.hits++;e.hp--;
+          e.yelling=60;e.yellText=e.hits>=3?'*cough*':'Ugh!';
+          if(e.hits>=1)e.speed=ENEMY_TYPES[e.type].speed*Math.max(0.1,1-e.hits*0.25);
+          if(e.hits>=3)e.speed=0.1;
+          if(e.hits>=4||e.hp<=0){e.passive=true;e.speed=0;kills++;let pts=e.type==='bovino'||e.type==='birdleg'?500:100;score+=pts;
+            addScorePopup(W/2,H/2-40,'+'+pts,pts>=500?'#f0f':'#ff0');
+            addParticles(W/2,H/2,e.type==='bovino'?'#8B4513':e.type==='birdleg'?'#FF69B4':'#0f0',15);
+            screenShake=8;
+          } else {addParticles(W/2,H/2,'#0f0',5);screenShake=3;}
+          projectiles.splice(i,1);hit=true;break;
+        }
       }
+      if(hit)break;
     }
+    if(!hit){p.life--;if(p.life<=0)projectiles.splice(i,1);}
   }
 }
 // Enemy AI
@@ -1382,19 +1428,41 @@ function drawProjectiles(strips){
   // Crosshair
   let cx=W/2, cy=H*0.35;
   // Draw smoke trail from joint to crosshair
-  let steps=5;
+  let steps=8;
   for(let i=0;i<steps;i++){
     let t=(i+1)/steps;
     let sx=jx+(cx-jx)*t;
     let sy=jy+(cy-jy)*t;
-    let sz=6-t*4; // bigger near joint, smaller near crosshair
-    let alpha=throwAnim*(0.4-t*0.3);
+    // Slight random drift for organic smoke feel
+    sx+=Math.sin(Date.now()/100+i*3)*2;
+    sy+=Math.cos(Date.now()/120+i*2)*1.5;
+    let sz=10-t*6; // bigger puffs
+    let alpha=throwAnim*(0.7-t*0.5);
     if(alpha<=0)continue;
     ctx.globalAlpha=alpha;
-    ctx.fillStyle='rgba(180,190,170,0.8)';
+    ctx.fillStyle='#c8cca8';
     ctx.beginPath();ctx.arc(sx,sy,sz,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(100,200,100,0.3)';
-    ctx.beginPath();ctx.arc(sx,sy,sz*0.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(80,180,80,0.4)';
+    ctx.beginPath();ctx.arc(sx,sy,sz*0.6,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  // Also draw world-space projectile puffs so you see them fly toward enemies
+  for(let p of projectiles){
+    let dx=p.x-px,dy=p.y-py,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<0.2)continue;
+    let angle=Math.atan2(dy,dx)-pa;
+    while(angle<-Math.PI)angle+=Math.PI*2;
+    while(angle>Math.PI)angle-=Math.PI*2;
+    if(Math.abs(angle)>FOV)continue;
+    let sx=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
+    let puffSz=Math.min(30,Math.max(4,(H/(dist*3))|0));
+    let sy=H*0.35; // at horizon/crosshair height
+    let shade=Math.max(0.1,1-dist/10);
+    ctx.globalAlpha=shade*0.7;
+    ctx.fillStyle='#c8cca8';
+    ctx.beginPath();ctx.arc(sx,sy,puffSz,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(80,180,80,0.3)';
+    ctx.beginPath();ctx.arc(sx,sy,puffSz*0.5,0,Math.PI*2);ctx.fill();
   }
   ctx.globalAlpha=1;
 }
@@ -1453,6 +1521,57 @@ function drawPrisoners(){
       ctx.font=(Math.max(6,h*0.08)|0)+'px monospace';
       ctx.fillText('HELP',x+w*0.1,y);
     }
+    ctx.globalAlpha=1;
+    ctx.restore();
+  }
+}
+// Draw weed crates as pickups
+function drawWeedCrates(){
+  let sorted=weedCrates.map(c=>{
+    let dx=c.x-px,dy=c.y-py;
+    return{c,dist:Math.sqrt(dx*dx+dy*dy)};
+  }).sort((a,b)=>b.dist-a.dist);
+  for(let{c,dist}of sorted){
+    let dx=c.x-px,dy=c.y-py;
+    let angle=Math.atan2(dy,dx)-pa;
+    while(angle<-Math.PI)angle+=Math.PI*2;
+    while(angle>Math.PI)angle-=Math.PI*2;
+    if(Math.abs(angle)>FOV||dist<0.3)continue;
+    let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
+    let screenH=Math.min(H*2,(H/dist)|0);
+    let sz=screenH*0.3;
+    let x=screenX-sz/2,y=H*0.35+screenH*0.15;
+    // Z-buffer check
+    let x0=Math.max(0,(screenX-sz/2)|0),x1=Math.min(W-1,(screenX+sz/2)|0);
+    let visible=false;
+    for(let col=x0;col<=x1;col++){if(dist<zBuf[col]){visible=true;break;}}
+    if(!visible)continue;
+    ctx.save();ctx.beginPath();
+    let runStart=-1;
+    for(let col=x0;col<=x1+1;col++){
+      if(col<=x1&&dist<zBuf[col]){if(runStart<0)runStart=col;}
+      else{if(runStart>=0){ctx.rect(runStart,0,col-runStart,H);runStart=-1;}}
+    }
+    ctx.clip();
+    let shade=Math.max(0.2,1-dist/8);
+    ctx.globalAlpha=shade;
+    // Green crate
+    ctx.fillStyle='#1a5a1a';
+    ctx.fillRect(x,y,sz,sz*0.8);
+    ctx.fillStyle='#0a3a0a';
+    ctx.fillRect(x+1,y+1,sz-2,sz*0.8-2);
+    // Weed leaf symbol
+    ctx.fillStyle='#2d8a2d';
+    let cx=x+sz/2,cy=y+sz*0.4;
+    let ls=sz*0.15;
+    ctx.fillRect(cx-1,cy-ls,2,ls*2); // stem
+    ctx.fillRect(cx-ls,cy-ls*0.3,ls*2,2); // cross
+    ctx.fillRect(cx-ls*0.7,cy-ls,ls*0.5,2); // left leaf
+    ctx.fillRect(cx+ls*0.2,cy-ls,ls*0.5,2); // right leaf
+    // Bobbing glow
+    let glow=0.3+Math.sin(Date.now()/300+c.x*7)*0.15;
+    ctx.fillStyle='rgba(0,255,0,'+glow+')';
+    ctx.fillRect(x-1,y-1,sz+2,sz*0.8+2);
     ctx.globalAlpha=1;
     ctx.restore();
   }
@@ -1628,7 +1747,7 @@ let lastTime=0;
 function gameLoop(ts){
   if(!running){requestAnimationFrame(gameLoop);return;}
   let dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;
-  if(throwAnim>0)throwAnim=Math.max(0,throwAnim-dt*5);
+  if(throwAnim>0)throwAnim=Math.max(0,throwAnim-dt*2.5);
   if(msgTimer>0){msgTimer--;if(msgTimer<=0)document.getElementById('message').style.display='none';}
   if(!paused){
     // movement (keyboard + touch)
@@ -1645,6 +1764,7 @@ function gameLoop(ts){
     if(mapAt(px|0,ny|0)===0)py=ny;
     updateProjectiles();
     updateEnemies(dt);
+    checkCratePickup();
   }
   // render - screen shake
   ctx.save();
@@ -1654,6 +1774,7 @@ function gameLoop(ts){
   drawWalls(strips);
   buildZBuffer(strips);
   drawPrisoners();
+  drawWeedCrates();
   drawEnemies(strips);
   drawProjectiles(strips);
   drawWeapon(throwAnim);
