@@ -1373,27 +1373,30 @@ function updateHUD(){
   drawDoomFace();
 }
 // Draw projectiles as smoke puffs
+// Screen-space smoke trail from joint to crosshair when firing
 function drawProjectiles(strips){
-  for(let p of projectiles){
-    let dx=p.x-px,dy=p.y-py;
-    let dist=Math.sqrt(dx*dx+dy*dy);
-    // Only render once projectile is far enough away to be "in the scene"
-    // Close-range visual handled by joint muzzle smoke in drawWeapon
-    if(dist<1.5)continue;
-    let angle=Math.atan2(dy,dx)-pa;
-    while(angle<-Math.PI)angle+=Math.PI*2;
-    while(angle>Math.PI)angle-=Math.PI*2;
-    if(Math.abs(angle)>FOV)continue;
-    let screenX=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
-    let screenY=H*0.42;
-    let sz=Math.max(2,10/dist);
-    ctx.globalAlpha=0.5;
-    ctx.fillStyle='rgba(180,190,170,0.7)';
-    ctx.beginPath();ctx.arc(screenX,screenY,sz,0,Math.PI*2);ctx.fill();
+  if(throwAnim<=0)return;
+  // Joint tip on screen
+  let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
+  let jx=W*0.32+bob+148, jy=H*0.78+10;
+  // Crosshair
+  let cx=W/2, cy=H*0.42;
+  // Draw smoke trail from joint to crosshair
+  let steps=5;
+  for(let i=0;i<steps;i++){
+    let t=(i+1)/steps;
+    let sx=jx+(cx-jx)*t;
+    let sy=jy+(cy-jy)*t;
+    let sz=6-t*4; // bigger near joint, smaller near crosshair
+    let alpha=throwAnim*(0.4-t*0.3);
+    if(alpha<=0)continue;
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle='rgba(180,190,170,0.8)';
+    ctx.beginPath();ctx.arc(sx,sy,sz,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='rgba(100,200,100,0.3)';
-    ctx.beginPath();ctx.arc(screenX,screenY,sz*0.5,0,Math.PI*2);ctx.fill();
-    ctx.globalAlpha=1;
+    ctx.beginPath();ctx.arc(sx,sy,sz*0.5,0,Math.PI*2);ctx.fill();
   }
+  ctx.globalAlpha=1;
 }
 // Draw prisoners (Alcatraz level)
 function drawPrisoners(){
