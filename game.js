@@ -1162,7 +1162,7 @@ function drawWeapon(throwAnim){
   let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
   let throwOff=throwAnim>0?-throwAnim*30:0;
   let pOff=0;
-  let bx=W*0.27+bob, by=H*0.33+pOff;
+  let bx=W*0.5+bob, by=H*0.62+pOff;
   // Smoke puff on fire
   if(throwAnim>0.3){
     let puffAlpha=throwAnim*0.6;
