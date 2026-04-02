@@ -1162,7 +1162,7 @@ function drawWeapon(throwAnim){
   let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
   let throwOff=throwAnim>0?-throwAnim*30:0;
   let pOff=0;
-  let bx=W*0.32+bob, by=H*0.78+pOff;
+  let bx=W*0.27+bob, by=H*0.33+pOff;
   // Smoke puff on fire
   if(throwAnim>0.3){
     let puffAlpha=throwAnim*0.6;
@@ -1418,9 +1418,8 @@ function updateHUD(){
   if(ln)ln.innerText=LEVELS[currentLevel].name;
   drawDoomFace();
 }
-// Draw projectiles as smoke puffs flying through the world
+// Draw projectiles as small smoke puffs flying through the world
 function drawProjectiles(strips){
-  // World-space projectile puffs - these are the actual ammo flying toward enemies
   for(let p of projectiles){
     let dx=p.x-px,dy=p.y-py,dist=Math.sqrt(dx*dx+dy*dy);
     if(dist<0.15)continue;
@@ -1429,31 +1428,20 @@ function drawProjectiles(strips){
     while(angle>Math.PI)angle-=Math.PI*2;
     if(Math.abs(angle)>FOV)continue;
     let sx=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
-    let screenH=(H/dist)|0;
-    let puffSz=Math.min(40,Math.max(6,screenH*0.25));
-    let sy=H*0.35; // at crosshair/horizon height
-    // Z-buffer check - don't draw behind walls
+    // Small puff - max 8px, like a bullet not a cloud
+    let puffSz=Math.min(8,Math.max(3,(H/dist)*0.04));
+    let sy=H*0.35;
+    // Z-buffer check
     let col=Math.max(0,Math.min(W-1,sx|0));
     if(dist>zBuf[col])continue;
-    let shade=Math.max(0.2,1-dist/12);
-    // Main smoke puff
-    ctx.globalAlpha=shade*0.85;
-    ctx.fillStyle='#d0d4b0';
+    let shade=Math.max(0.3,1-dist/10);
+    // Small bright smoke dot
+    ctx.globalAlpha=shade*0.9;
+    ctx.fillStyle='#dde0c0';
     ctx.beginPath();ctx.arc(sx,sy,puffSz,0,Math.PI*2);ctx.fill();
-    // Green tint core
-    ctx.fillStyle='rgba(60,200,60,0.5)';
-    ctx.beginPath();ctx.arc(sx,sy,puffSz*0.5,0,Math.PI*2);ctx.fill();
-    // Wispy trail behind
-    let trailAng=Math.atan2(p.dy,p.dx)-pa;
-    while(trailAng<-Math.PI)trailAng+=Math.PI*2;
-    while(trailAng>Math.PI)trailAng-=Math.PI*2;
-    ctx.globalAlpha=shade*0.3;
-    ctx.fillStyle='rgba(180,190,170,0.6)';
-    for(let t=1;t<=3;t++){
-      let tx=sx-Math.cos(trailAng)*puffSz*t*0.8;
-      let tsz=puffSz*(1-t*0.2);
-      ctx.beginPath();ctx.arc(tx,sy,tsz,0,Math.PI*2);ctx.fill();
-    }
+    // Tiny green center
+    ctx.fillStyle='#4d4';
+    ctx.beginPath();ctx.arc(sx,sy,puffSz*0.4,0,Math.PI*2);ctx.fill();
   }
   ctx.globalAlpha=1;
 }
