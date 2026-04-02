@@ -1418,51 +1418,42 @@ function updateHUD(){
   if(ln)ln.innerText=LEVELS[currentLevel].name;
   drawDoomFace();
 }
-// Draw projectiles as smoke puffs
-// Screen-space smoke trail from joint to crosshair when firing
+// Draw projectiles as smoke puffs flying through the world
 function drawProjectiles(strips){
-  if(throwAnim<=0)return;
-  // Joint tip on screen
-  let bob=running?Math.sin(Date.now()/80)*4:Math.sin(Date.now()/200)*2;
-  let jx=W*0.32+bob+148, jy=H*0.78+10;
-  // Crosshair
-  let cx=W/2, cy=H*0.35;
-  // Draw smoke trail from joint to crosshair
-  let steps=8;
-  for(let i=0;i<steps;i++){
-    let t=(i+1)/steps;
-    let sx=jx+(cx-jx)*t;
-    let sy=jy+(cy-jy)*t;
-    // Slight random drift for organic smoke feel
-    sx+=Math.sin(Date.now()/100+i*3)*2;
-    sy+=Math.cos(Date.now()/120+i*2)*1.5;
-    let sz=10-t*6; // bigger puffs
-    let alpha=throwAnim*(0.7-t*0.5);
-    if(alpha<=0)continue;
-    ctx.globalAlpha=alpha;
-    ctx.fillStyle='#c8cca8';
-    ctx.beginPath();ctx.arc(sx,sy,sz,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(80,180,80,0.4)';
-    ctx.beginPath();ctx.arc(sx,sy,sz*0.6,0,Math.PI*2);ctx.fill();
-  }
-  ctx.globalAlpha=1;
-  // Also draw world-space projectile puffs so you see them fly toward enemies
+  // World-space projectile puffs - these are the actual ammo flying toward enemies
   for(let p of projectiles){
     let dx=p.x-px,dy=p.y-py,dist=Math.sqrt(dx*dx+dy*dy);
-    if(dist<0.2)continue;
+    if(dist<0.15)continue;
     let angle=Math.atan2(dy,dx)-pa;
     while(angle<-Math.PI)angle+=Math.PI*2;
     while(angle>Math.PI)angle-=Math.PI*2;
     if(Math.abs(angle)>FOV)continue;
     let sx=W/2+Math.tan(angle)*(W/2)/Math.tan(HALF_FOV);
-    let puffSz=Math.min(30,Math.max(4,(H/(dist*3))|0));
-    let sy=H*0.35; // at horizon/crosshair height
-    let shade=Math.max(0.1,1-dist/10);
-    ctx.globalAlpha=shade*0.7;
-    ctx.fillStyle='#c8cca8';
+    let screenH=(H/dist)|0;
+    let puffSz=Math.min(40,Math.max(6,screenH*0.25));
+    let sy=H*0.35; // at crosshair/horizon height
+    // Z-buffer check - don't draw behind walls
+    let col=Math.max(0,Math.min(W-1,sx|0));
+    if(dist>zBuf[col])continue;
+    let shade=Math.max(0.2,1-dist/12);
+    // Main smoke puff
+    ctx.globalAlpha=shade*0.85;
+    ctx.fillStyle='#d0d4b0';
     ctx.beginPath();ctx.arc(sx,sy,puffSz,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(80,180,80,0.3)';
+    // Green tint core
+    ctx.fillStyle='rgba(60,200,60,0.5)';
     ctx.beginPath();ctx.arc(sx,sy,puffSz*0.5,0,Math.PI*2);ctx.fill();
+    // Wispy trail behind
+    let trailAng=Math.atan2(p.dy,p.dx)-pa;
+    while(trailAng<-Math.PI)trailAng+=Math.PI*2;
+    while(trailAng>Math.PI)trailAng-=Math.PI*2;
+    ctx.globalAlpha=shade*0.3;
+    ctx.fillStyle='rgba(180,190,170,0.6)';
+    for(let t=1;t<=3;t++){
+      let tx=sx-Math.cos(trailAng)*puffSz*t*0.8;
+      let tsz=puffSz*(1-t*0.2);
+      ctx.beginPath();ctx.arc(tx,sy,tsz,0,Math.PI*2);ctx.fill();
+    }
   }
   ctx.globalAlpha=1;
 }
@@ -1553,23 +1544,27 @@ function drawWeedCrates(){
       else{if(runStart>=0){ctx.rect(runStart,0,col-runStart,H);runStart=-1;}}
     }
     ctx.clip();
-    let shade=Math.max(0.2,1-dist/8);
+    let shade=Math.max(0.25,1-dist/8);
     ctx.globalAlpha=shade;
-    // Green crate
-    ctx.fillStyle='#1a5a1a';
+    // Brown wooden crate
+    ctx.fillStyle='#5a3a1a';
     ctx.fillRect(x,y,sz,sz*0.8);
-    ctx.fillStyle='#0a3a0a';
-    ctx.fillRect(x+1,y+1,sz-2,sz*0.8-2);
-    // Weed leaf symbol
-    ctx.fillStyle='#2d8a2d';
-    let cx=x+sz/2,cy=y+sz*0.4;
-    let ls=sz*0.15;
-    ctx.fillRect(cx-1,cy-ls,2,ls*2); // stem
-    ctx.fillRect(cx-ls,cy-ls*0.3,ls*2,2); // cross
-    ctx.fillRect(cx-ls*0.7,cy-ls,ls*0.5,2); // left leaf
-    ctx.fillRect(cx+ls*0.2,cy-ls,ls*0.5,2); // right leaf
-    // Bobbing glow
-    let glow=0.3+Math.sin(Date.now()/300+c.x*7)*0.15;
+    // Darker inner
+    ctx.fillStyle='#3a2a10';
+    ctx.fillRect(x+2,y+2,sz-4,sz*0.8-4);
+    // Cross planks
+    ctx.fillStyle='#6a4a2a';
+    ctx.fillRect(x,y+sz*0.35,sz,2);
+    ctx.fillRect(x+sz*0.45,y,2,sz*0.8);
+    // Green leaf on front
+    let lx=x+sz*0.35,ly=y+sz*0.15,lsz=sz*0.3;
+    ctx.fillStyle='#1a8a1a';
+    ctx.fillRect(lx+lsz*0.4,ly,lsz*0.2,lsz); // stem
+    ctx.fillRect(lx,ly+lsz*0.2,lsz,lsz*0.15); // cross
+    ctx.fillRect(lx+lsz*0.15,ly,lsz*0.15,lsz*0.4); // left blade
+    ctx.fillRect(lx+lsz*0.7,ly,lsz*0.15,lsz*0.4); // right blade
+    // Subtle green pulse
+    let glow=0.1+Math.sin(Date.now()/400+c.x*5)*0.08;
     ctx.fillStyle='rgba(0,255,0,'+glow+')';
     ctx.fillRect(x-1,y-1,sz+2,sz*0.8+2);
     ctx.globalAlpha=1;
